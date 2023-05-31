@@ -1,3 +1,8 @@
+#  Add-hoc gitignore for python project
+dt-halfcheetah-*
+dt-walker2d-*
+**/.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
