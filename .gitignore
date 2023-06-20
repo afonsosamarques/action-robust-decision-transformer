@@ -1,6 +1,7 @@
 #  Add-hoc gitignore for python project
 dt-halfcheetah-*
 dt-walker2d-*
+datasets/
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files
