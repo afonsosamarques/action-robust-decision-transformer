@@ -463,6 +463,7 @@ class SingleAgentRobustDT(DecisionTransformerModel):
         output_hidden_states=None,
         output_attentions=None,
         return_dict=None,):
+        #
         # TO COMMENT
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -521,14 +522,15 @@ class SingleAgentRobustDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        # FIXME FIX INDEXING!!!!
-        mu_preds = self.predict_mu(x[:, 1])  # predict next action dist. mean given return and state
-        sigma_preds = self.predict_sigma_exp(x[:, 1])  # predict next action dist. sigma given return and state
-        adv_action_preds = self.predict_adv_action(x[:, 1])  # predict next action given return, state and pr_action
+        # FIXME check indexing
+        mu_preds = self.predict_mu(x[:, 1])  # predict next pr action dist. mean given return and state
+        sigma_preds = self.predict_sigma_exp(x[:, 1])  # predict next pr action dist. sigma given return and state
+        pr_action_dist = torch.distributions.Normal(mu_preds, sigma_preds)
+        
+        adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next adv action given return, state and pr_action
 
         if is_train:
             # return loss
-            pr_action_dist = torch.distributions.Normal(mu_preds, sigma_preds)
             pr_action_log_prob = pr_action_dist.log_prob(pr_actions).sum()
             pr_action_entropy = pr_action_dist.entropy().sum()
             pr_action_loss = -pr_action_log_prob - self.config.lambda1 * pr_action_entropy
@@ -548,7 +550,7 @@ class SingleAgentRobustDT(DecisionTransformerModel):
                 return (pr_action_dist.mean, adv_action_preds)
 
             return DecisionTransformerOutput(
-                return_preds=pr_action_dist.mean,
+                pr_action_preds=pr_action_dist.mean,
                 adv_action_preds=adv_action_preds,
                 hidden_states=encoder_outputs.hidden_states,
                 last_hidden_state=encoder_outputs.last_hidden_state,

@@ -2,6 +2,7 @@
 dt-halfcheetah-*
 dt-walker2d-*
 datasets/
+access_tokens.py
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files
