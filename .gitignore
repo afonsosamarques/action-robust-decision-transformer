@@ -4,6 +4,7 @@ dt-walker2d-*
 datasets/
 env-sims/
 agents/
+eval-outputs/
 access_tokens.py
 **/.DS_Store
 

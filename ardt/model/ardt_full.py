@@ -258,6 +258,8 @@ class StochasticDT(DecisionTransformerModel):
 
 
 class TwoAgentRobustDT(DecisionTransformerModel):
+    ct = 0
+
     def __init__(self, config):
         super().__init__(config)
         self.config = config
@@ -281,6 +283,8 @@ class TwoAgentRobustDT(DecisionTransformerModel):
         #
         # easier if we simply separate between training and testing straight away
         if is_train:
+            self.ct += 1
+
             adt_out = self.adt.forward(
                 is_train=is_train,
                 states=states,
@@ -295,22 +299,23 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 return_dict=return_dict,
             )
             loss = adt_out['loss']
-            rtg_preds = adt_out['rtg_preds']
 
-            sdt_out = self.sdt.forward(
-               is_train=is_train,
-                states=states,
-                pr_actions=pr_actions,
-                adv_actions=adv_actions,
-                rewards=rewards,
-                returns_to_go=rtg_preds,
-                timesteps=timesteps,
-                attention_mask=attention_mask,
-                output_hidden_states=output_hidden_states,
-                output_attentions=output_attentions,
-                return_dict=return_dict,
-            )
-            loss += sdt_out['loss']
+            if self.ct > self.config.warmup_epochs:
+                # initially we train only the ADT, which will work as a sort of "teacher" for the SDT
+                sdt_out = self.sdt.forward(
+                is_train=is_train,
+                    states=states,
+                    pr_actions=pr_actions,
+                    adv_actions=adv_actions,
+                    rewards=rewards,
+                    returns_to_go=adt_out['rtg_preds'],
+                    timesteps=timesteps,
+                    attention_mask=attention_mask,
+                    output_hidden_states=output_hidden_states,
+                    output_attentions=output_attentions,
+                    return_dict=return_dict,
+                )
+                loss += sdt_out['loss']
 
             return {"loss": loss}
         else:

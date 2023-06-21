@@ -1,1 +1,2 @@
-# action-robust-decision-transformer
+# Action Robust Decision Transformer
+Details to come.
