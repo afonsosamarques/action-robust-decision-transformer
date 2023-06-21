@@ -531,19 +531,25 @@ class SingleAgentRobustDT(DecisionTransformerModel):
 
         if is_train:
             # return loss
-            pr_action_log_prob = pr_action_dist.log_prob(pr_actions).sum()
-            pr_action_entropy = pr_action_dist.entropy().sum()
-            pr_action_loss = -pr_action_log_prob - self.config.lambda1 * pr_action_entropy
+            pr_action_log_prob = -pr_action_dist.log_prob(pr_actions).mean()
+            pr_action_entropy = -pr_action_dist.entropy().mean()
+            pr_action_loss = pr_action_log_prob + self.config.lambda1 * pr_action_entropy
 
             adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
-            return {"loss": pr_action_loss + adv_action_loss, 
+            d = {"loss": pr_action_loss + adv_action_loss, 
                     "pr_action_loss": pr_action_loss, 
                     "pr_action_log_prob": pr_action_log_prob, 
                     "pr_action_entropy": pr_action_entropy, 
                     "adv_action_loss": adv_action_loss}
+        
+            # for ek, ev in d.items():
+            #     print(ek, ": ", ev.item())
+            # print("===============================================================")
+
+            return d
         else:
             # return predictions
             if not return_dict:
