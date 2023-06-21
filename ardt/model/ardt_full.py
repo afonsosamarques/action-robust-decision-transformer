@@ -2,8 +2,8 @@ import torch
 
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
-from ardt_utils import DecisionTransformerOutput
-from ardt_utils import ExpFunc
+from .ardt_utils import DecisionTransformerOutput
+from .ardt_utils import ExpFunc
 
 
 class AdversarialDT(DecisionTransformerModel):

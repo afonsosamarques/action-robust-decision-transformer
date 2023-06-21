@@ -2,6 +2,8 @@
 dt-halfcheetah-*
 dt-walker2d-*
 datasets/
+env-sims/
+agents/
 access_tokens.py
 **/.DS_Store
 
