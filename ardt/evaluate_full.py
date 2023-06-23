@@ -7,10 +7,10 @@ from collections import defaultdict
 from huggingface_hub import login
 from transformers import DecisionTransformerModel, DecisionTransformerConfig
 
-from model.ardt_naive import SingleAgentRobustDT
+from model.ardt_vanilla import SingleAgentRobustDT
 from model.ardt_full import TwoAgentRobustDT
 
-from access_tokens import WRITE_TOKEN
+from access_tokens import HF_WRITE_TOKEN
 
 
 def get_action_no_adv(model, states, actions, rewards, returns_to_go, timesteps, device):
@@ -31,7 +31,7 @@ def get_action_no_adv(model, states, actions, rewards, returns_to_go, timesteps,
     returns_to_go = returns_to_go[:, -model.config.context_size :]
     timesteps = timesteps[:, -model.config.context_size :]
 
-    # normlisation
+    # normalisation
     states = (states - state_mean) / state_std
 
     # pad all tokens to sequence length
@@ -107,7 +107,7 @@ def get_action_with_adv(model, states, pr_actions, adv_actions, rewards, returns
 def load_model(model_to_use):
     if model_to_use == "dt-halfcheetah-v2":
         return DecisionTransformerModel.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True), False
-    elif model_to_use == "ardt-naive-halfcheetah-v0":
+    elif model_to_use == "ardt-vanilla-halfcheetah-v0":
         config = DecisionTransformerConfig.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True)
         model = SingleAgentRobustDT(config)
         return model.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True), True
@@ -115,10 +115,24 @@ def load_model(model_to_use):
         config = DecisionTransformerConfig.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True)
         model = TwoAgentRobustDT(config)
         return model.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True), True
+    elif model_to_use == "ardt-halfcheetah-v3-lambda10.05-lambda23":
+        config = DecisionTransformerConfig.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True)
+        model = TwoAgentRobustDT(config)
+        return model.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True), True
+    elif model_to_use == "ardt-vanilla-halfcheetah-v0-lambda10.0-lambda20.0":
+        config = DecisionTransformerConfig.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True)
+        model = SingleAgentRobustDT(config)
+        return model.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True), True
+    elif model_to_use == "ardt-halfcheetah-v4-lambda10.0-lambda20.0":
+        config = DecisionTransformerConfig.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True)
+        model = TwoAgentRobustDT(config)
+        return model.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True), True
+    else:
+        raise Exception("Model not available.")
         
 
 if __name__ == "__main__":
-    login(token=WRITE_TOKEN)
+    login(token=HF_WRITE_TOKEN)
 
     # picking environment
     envs_in_gym = {
@@ -127,8 +141,8 @@ if __name__ == "__main__":
     }
 
     default_tr_per_1000 = {
-        "Walker2d-v4": 7200,
-        "HalfCheetah-v4": 12000
+        "Walker2d-v4": 5000,
+        "HalfCheetah-v4": 12000  # 6000 in DT!!!!
     }
 
     chosen_env = envs_in_gym[1]
@@ -136,7 +150,8 @@ if __name__ == "__main__":
 
     # agent possibilities
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    hf_models_to_use = ["dt-halfcheetah-v2", "ardt-naive-halfcheetah-v0", "ardt-halfcheetah-v2"]
+    # hf_models_to_use = ["dt-halfcheetah-v2", "ardt-vanilla-halfcheetah-v0", "ardt-halfcheetah-v2"]
+    hf_models_to_use = ["dt-halfcheetah-v2", "ardt-vanilla-halfcheetah-v0-lambda10.0-lambda20.0", "ardt-halfcheetah-v4-lambda10.0-lambda20.0"]
 
     # evaluate
     eval_dict = {}
@@ -229,10 +244,6 @@ if __name__ == "__main__":
                         eval_dict[model_name]['ep_length'].append(episode_length)
                         eval_dict[model_name]['ep_return'].append(episode_return)
                         break
-    
-    # save eval_dict as json
-    with open('./eval_outputs/output_stats.json', 'w') as f:
-        json.dump(eval_dict, f)
 
     # show some simple statistics
     print("\n==========================================================================================\n")
@@ -243,3 +254,7 @@ if __name__ == "__main__":
         print(f"Episode lengths | Avg: {np.round(np.mean(metrics['ep_length']), 4)} | Std: {np.round(np.std(metrics['ep_length']), 4)} | Min: {np.round(np.min(metrics['ep_length']), 4)} | Median: {np.round(np.median(metrics['ep_length']), 4)} | Max: {np.round(np.max(metrics['ep_length']), 4)}")
         print(f"Episode returns | Avg: {np.round(np.mean(metrics['ep_return']), 4)} | Std: {np.round(np.std(metrics['ep_return']), 4)} | Min: {np.round(np.min(metrics['ep_return']), 4)} | Median: {np.round(np.median(metrics['ep_return']), 4)} | Max: {np.round(np.max(metrics['ep_return']), 4)}")
         print("\n")
+
+    # save eval_dict as json
+    with open(f'./eval-outputs/{model_name}.json', 'w') as f:
+        json.dump(eval_dict, f)

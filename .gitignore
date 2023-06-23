@@ -5,6 +5,7 @@ datasets/
 env-sims/
 agents/
 eval-outputs/
+wandb/
 access_tokens.py
 **/.DS_Store
 
