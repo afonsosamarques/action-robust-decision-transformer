@@ -1,9 +1,10 @@
+import numpy as np
 import torch
 
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
 from .ardt_utils import DecisionTransformerOutput
-from .ardt_utils import ExpFunc
+from .ardt_utils import BetaParamsSquashFunc, StdSquashFunc, ExpFunc
 
 
 class AdversarialDT(DecisionTransformerModel):
@@ -21,9 +22,11 @@ class AdversarialDT(DecisionTransformerModel):
         self.embed_adv_action = torch.nn.Linear(config.adv_act_dim, config.hidden_size)
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
-        self.predict_mu = torch.nn.Linear(config.hidden_size, 1)
-        self.predict_sigma_exp = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, 1)] + [ExpFunc()])
+        self.predict_alpha = torch.nn.Sequential(
+            *([torch.nn.Linear(config.hidden_size, 1)] + [BetaParamsSquashFunc()] + [ExpFunc()])
+        )
+        self.predict_epsilon = torch.nn.Sequential(
+            *([torch.nn.Linear(config.hidden_size, 1)] + [BetaParamsSquashFunc()] + [ExpFunc()])
         )
         self.predict_adv_action = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()] if config.action_tanh else []))
@@ -34,6 +37,7 @@ class AdversarialDT(DecisionTransformerModel):
     def forward(
         self,
         is_train=True,
+        pred_adv=True,
         states=None,
         pr_actions=None,
         adv_actions=None,
@@ -103,22 +107,24 @@ class AdversarialDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        # FIXME this indexing seems off...
-        mu_preds = self.predict_mu(x[:, 3])  # predict next return given everything
-        sigma_preds = self.predict_sigma_exp(x[:, 3])  # predict next return given everything
-        rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)
+        alpha_preds = self.predict_alpha(x[:, 1])  # predict next return given return and state
+        epsilon_preds = self.predict_epsilon(x[:, 1])  # predict next return given return and state
+        rtg_dist = torch.distributions.beta.Beta(alpha_preds + epsilon_preds, alpha_preds)
         
-        adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given return, state and pr_action
+        adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given state and pr_action
 
         if is_train:
             # return loss
-            rtg_log_prob = -rtg_dist.log_prob(returns_to_go).mean()
+            scaled_rtg = (returns_to_go + self.config.max_return) / (self.config.max_return * 2)
+            rtg_log_prob = -rtg_dist.log_prob(scaled_rtg).sum(axis=2)[attention_mask > 0].mean()
             rtg_entropy = -rtg_dist.entropy().mean()
             rtg_loss = rtg_log_prob + self.config.lambda1 * rtg_entropy
 
-            adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
-            adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
-            adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
+            adv_action_loss = 0
+            if pred_adv:
+                adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
+                adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
+                adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
             return {"loss": rtg_loss + adv_action_loss, 
                     "rtg_loss": rtg_loss, 
@@ -128,11 +134,12 @@ class AdversarialDT(DecisionTransformerModel):
                     "rtg_preds": rtg_dist.rsample(),}
         else:
             # return predictions
+            rtg_pred_scaled = rtg_dist.mean * (self.config.max_return * 2) - self.config.max_return
             if not return_dict:
-                return (rtg_dist.mean, adv_action_preds)
+                return (rtg_pred_scaled, adv_action_preds)
 
             return DecisionTransformerOutput(
-                rtg_preds=rtg_dist.mean,
+                rtg_preds=rtg_pred_scaled,
                 adv_action_preds=adv_action_preds,
                 hidden_states=encoder_outputs.hidden_states,
                 last_hidden_state=encoder_outputs.last_hidden_state,
@@ -154,9 +161,11 @@ class StochasticDT(DecisionTransformerModel):
         self.embed_pr_action = torch.nn.Linear(config.pr_act_dim, config.hidden_size)
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
-        self.predict_mu = torch.nn.Linear(config.hidden_size, config.pr_act_dim)
-        self.predict_sigma_exp = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [ExpFunc()])  # keeping it to diag matrix for now
+        self.predict_mu = torch.nn.Sequential(
+            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()] if config.action_tanh else []))
+        )
+        self.predict_sigma = torch.nn.Sequential(
+            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdSquashFunc()] + [ExpFunc()])  # keeping it to diag matrix for now
         )
 
         self.post_init()
@@ -232,16 +241,17 @@ class StochasticDT(DecisionTransformerModel):
 
         # get predictions
         # FIXME check indexing, this seems off
-        mu_preds = self.predict_mu(x[:, 1])  # predict next action dist. mean given return and state
-        sigma_preds = self.predict_sigma_exp(x[:, 1])  # predict next action dist. sigma given return and state
+        mu_preds = self.predict_mu(x[:, 1])  # predict next action dist. mean given returns and states
+        sigma_preds = self.predict_sigma(x[:, 1])  # predict next action dist. sigma given returns and states
         pr_action_dist = torch.distributions.Normal(mu_preds, sigma_preds)
 
         if is_train:
             # return loss
-            pr_action_log_prob = -pr_action_dist.log_prob(pr_actions).mean()
+            pr_action_log_prob = -pr_action_dist.log_prob(pr_actions).sum(axis=2)[attention_mask > 0].mean()
             pr_action_entropy = -pr_action_dist.entropy().mean()
             pr_action_loss = pr_action_log_prob + self.config.lambda1 * pr_action_entropy
-            return {"loss": pr_action_loss, 
+
+            return {"loss": pr_action_loss,
                     "pr_action_log_prob": pr_action_log_prob, 
                     "pr_action_entropy": pr_action_entropy}
         else:
@@ -251,9 +261,9 @@ class StochasticDT(DecisionTransformerModel):
 
             return DecisionTransformerOutput(
                 pr_action_preds=pr_action_dist.mean,
-                hidden_states=encoder_outputs.hidden_states,
-                last_hidden_state=encoder_outputs.last_hidden_state,
-                attentions=encoder_outputs.attentions,
+                # hidden_states=encoder_outputs.hidden_states,
+                # last_hidden_state=encoder_outputs.last_hidden_state,
+                # attentions=encoder_outputs.attentions,
             )
 
 
@@ -287,6 +297,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
 
             adt_out = self.adt.forward(
                 is_train=is_train,
+                pred_adv=(self.ct > self.config.warmup_epochs),
                 states=states,
                 pr_actions=pr_actions,
                 adv_actions=adv_actions,
@@ -300,10 +311,11 @@ class TwoAgentRobustDT(DecisionTransformerModel):
             )
             loss = adt_out['loss']
 
+            sdt_out = None
             if self.ct > self.config.warmup_epochs:
                 # initially we train only the ADT, which will work as a sort of "teacher" for the SDT
                 sdt_out = self.sdt.forward(
-                is_train=is_train,
+                    is_train=is_train,
                     states=states,
                     pr_actions=pr_actions,
                     adv_actions=adv_actions,
@@ -317,6 +329,14 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 )
                 loss += sdt_out['loss']
 
+            # return {"loss": loss,
+            #         "rtg_loss": adt_out['rtg_loss'], 
+            #         "rtg_log_prob": adt_out['rtg_log_prob'], 
+            #         "rtg_entropy": adt_out['rtg_entropy'], 
+            #         "adv_action_loss": adt_out['adv_action_loss'],
+            #         "pr_action_loss": 0 if sdt_out is None else sdt_out['loss'],
+            #         "pr_action_log_prob": 0 if sdt_out is None else sdt_out['pr_action_log_prob'], 
+            #         "pr_action_entropy": 0 if sdt_out is None else sdt_out['pr_action_entropy'],}
             return {"loss": loss}
         else:
             adt_out = self.adt.forward(
@@ -365,3 +385,50 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                     # last_hidden_state=encoder_outputs.last_hidden_state,
                     # attentions=encoder_outputs.attentions,
                 )
+
+    def get_action(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device):
+        # NOTE this implementation does not condition on past rewards
+        # reshape to model input format
+        states = states.reshape(1, -1, self.config.state_dim)
+        pr_actions = pr_actions.reshape(1, -1, self.config.pr_act_dim)
+        adv_actions = adv_actions.reshape(1, -1, self.config.adv_act_dim)
+        returns_to_go = returns_to_go.reshape(1, -1, 1)
+        timesteps = timesteps.reshape(1, -1)
+
+        # normalisation constants
+        state_mean = torch.from_numpy(np.array(self.config.state_mean).astype(np.float32)).to(device=device)
+        state_std = torch.from_numpy(np.array(self.config.state_std).astype(np.float32)).to(device=device)
+
+        # retrieve window of observations based on context length
+        states = states[:, -self.config.context_size :]
+        pr_actions = pr_actions[:, -self.config.context_size :]
+        adv_actions = adv_actions[:, -self.config.context_size :]
+        returns_to_go = returns_to_go[:, -self.config.context_size :]
+        timesteps = timesteps[:, -self.config.context_size :]
+
+        # normalising states
+        states = (states - state_mean) / state_std
+
+        # pad all tokens to sequence length
+        padlen = self.config.context_size - states.shape[1]
+        attention_mask = torch.cat([torch.zeros(padlen, device=device), torch.ones(states.shape[1], device=device)]).to(dtype=torch.long).reshape(1, -1)
+        states = torch.cat([torch.zeros((1, padlen, self.config.state_dim), device=device), states], dim=1).float()
+        pr_actions = torch.cat([torch.zeros((1, padlen, self.config.pr_act_dim), device=device), pr_actions], dim=1).float()
+        adv_actions = torch.cat([torch.zeros((1, padlen, self.config.adv_act_dim), device=device), adv_actions], dim=1).float()
+        returns_to_go = torch.cat([torch.zeros((1, padlen, 1), device=device), returns_to_go], dim=1).float()
+        timesteps = torch.cat([torch.zeros((1, padlen), dtype=torch.long, device=device), timesteps], dim=1)
+
+        # forward pass
+        pr_action_preds, adv_action_preds = self.forward(
+            is_train=False,
+            states=states,
+            pr_actions=pr_actions,
+            adv_actions=adv_actions,
+            rewards=rewards,
+            returns_to_go=returns_to_go,
+            timesteps=timesteps,
+            attention_mask=attention_mask,
+            return_dict=False,
+        )
+
+        return pr_action_preds[0, -1], adv_action_preds[0, -1]

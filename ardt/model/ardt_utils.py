@@ -148,14 +148,20 @@ class DecisionTransformerGymDataCollator:
         }
     
 
-class GFunc(torch.nn.Module):
-    # NOTE not in use!!!!
+class BetaParamsSquashFunc(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, x):
-        assert torch.all(torch.min(x) >= 0) and torch.all(torch.max(x) <= 1)
-        return x / (1 - x)
+    def forward(self, p, min_log=-5.0, max_log=4.0):
+        return min_log + 0.5 * (max_log - min_log) * (torch.tanh(p) + 1.0)
+
+
+class StdSquashFunc(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, p, min_log_std=-5.0, max_log_std=0.0):
+        return min_log_std + 0.5 * (max_log_std - min_log_std) * (torch.tanh(p) + 1.0)
 
 
 class ExpFunc(torch.nn.Module):
