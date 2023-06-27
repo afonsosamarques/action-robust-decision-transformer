@@ -4,6 +4,7 @@ dt-walker2d-*
 datasets/
 env-sims/
 agents/
+agents-pipeline/
 eval-outputs/
 wandb/
 access_tokens.py
