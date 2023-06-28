@@ -8,9 +8,12 @@ from .ardt_utils import StdSquashFunc, ExpFunc
 
 
 class SingleAgentRobustDT(DecisionTransformerModel):
-    def __init__(self, config):
+    def __init__(self, config, logger=None):
         super().__init__(config)
         self.config = config
+        self.logger = logger
+        self.step = 0
+
         self.hidden_size = config.hidden_size
 
         self.encoder = DecisionTransformerGPT2Model(config)
@@ -124,11 +127,19 @@ class SingleAgentRobustDT(DecisionTransformerModel):
             adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
-            # return {"loss": pr_action_loss + adv_action_loss, 
-            #         "pr_action_loss": pr_action_loss, 
-            #         "pr_action_log_prob": pr_action_log_prob, 
-            #         "pr_action_entropy": pr_action_entropy, 
-            #         "adv_action_loss": adv_action_loss}
+            if self.logger is not None:
+                self.logger.add_entry(
+                    step=self.step,
+                    hyperparams={"lambda1": self.config.lambda1, "lambda2": self.config.lambda2},
+                    tr_losses={"loss": (pr_action_loss + adv_action_loss).item(), 
+                            "pr_action_loss": pr_action_loss.item(), 
+                            "pr_action_log_prob": pr_action_log_prob.item(), 
+                            "pr_action_entropy": pr_action_entropy.item(), 
+                            "adv_action_loss": adv_action_loss.item()},
+                    dist_params={f"sigma_{i}": torch.mean(sigma_preds[:, i]).item() for i in range(sigma_preds.shape[1])},
+                    log=True
+                )
+
             return {"loss": pr_action_loss + adv_action_loss}
         else:
             # return predictions

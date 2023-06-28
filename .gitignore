@@ -5,9 +5,12 @@ datasets/
 env-sims/
 agents/
 agents-pipeline/
+eval-outputs-pipeline/
 eval-outputs/
 wandb/
 access_tokens.py
+screenshots/
+steps-ucl-cluster/
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files

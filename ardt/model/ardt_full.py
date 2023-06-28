@@ -131,7 +131,9 @@ class AdversarialDT(DecisionTransformerModel):
                     "rtg_log_prob": rtg_log_prob, 
                     "rtg_entropy": rtg_entropy, 
                     "adv_action_loss": adv_action_loss,
-                    "rtg_preds": rtg_dist.rsample(),}
+                    "alpha": alpha_preds,
+                    "epsilon": epsilon_preds,
+                    "rtg_preds": rtg_dist.rsample()}
         else:
             # return predictions
             rtg_pred_scaled = rtg_dist.mean * (self.config.max_return * 2) - self.config.max_return
@@ -141,9 +143,9 @@ class AdversarialDT(DecisionTransformerModel):
             return DecisionTransformerOutput(
                 rtg_preds=rtg_pred_scaled,
                 adv_action_preds=adv_action_preds,
-                hidden_states=encoder_outputs.hidden_states,
-                last_hidden_state=encoder_outputs.last_hidden_state,
-                attentions=encoder_outputs.attentions,
+                # hidden_states=encoder_outputs.hidden_states,
+                # last_hidden_state=encoder_outputs.last_hidden_state,
+                # attentions=encoder_outputs.attentions,
             )
     
 
@@ -253,7 +255,9 @@ class StochasticDT(DecisionTransformerModel):
 
             return {"loss": pr_action_loss,
                     "pr_action_log_prob": pr_action_log_prob, 
-                    "pr_action_entropy": pr_action_entropy}
+                    "pr_action_entropy": pr_action_entropy,
+                    "mu": mu_preds,
+                    "sigma": sigma_preds}
         else:
             # return predictions
             if not return_dict:
@@ -268,13 +272,14 @@ class StochasticDT(DecisionTransformerModel):
 
 
 class TwoAgentRobustDT(DecisionTransformerModel):
-    ct = 0
 
-    def __init__(self, config):
+    def __init__(self, config, logger=None):
         super().__init__(config)
         self.config = config
+        self.logger = logger
         self.adt = AdversarialDT(config)
         self.sdt = StochasticDT(config)
+        self.step = 1
         self.post_init()
 
     def forward(
@@ -293,11 +298,11 @@ class TwoAgentRobustDT(DecisionTransformerModel):
         #
         # easier if we simply separate between training and testing straight away
         if is_train:
-            self.ct += 1
+            self.step += 1
 
             adt_out = self.adt.forward(
                 is_train=is_train,
-                pred_adv=(self.ct > self.config.warmup_epochs),
+                pred_adv=(self.step > self.config.warmup_steps),
                 states=states,
                 pr_actions=pr_actions,
                 adv_actions=adv_actions,
@@ -312,7 +317,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
             loss = adt_out['loss']
 
             sdt_out = None
-            if self.ct > self.config.warmup_epochs:
+            if self.step > self.config.warmup_steps:
                 # initially we train only the ADT, which will work as a sort of "teacher" for the SDT
                 sdt_out = self.sdt.forward(
                     is_train=is_train,
@@ -329,14 +334,32 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 )
                 loss += sdt_out['loss']
 
-            # return {"loss": loss,
-            #         "rtg_loss": adt_out['rtg_loss'], 
-            #         "rtg_log_prob": adt_out['rtg_log_prob'], 
-            #         "rtg_entropy": adt_out['rtg_entropy'], 
-            #         "adv_action_loss": adt_out['adv_action_loss'],
-            #         "pr_action_loss": 0 if sdt_out is None else sdt_out['loss'],
-            #         "pr_action_log_prob": 0 if sdt_out is None else sdt_out['pr_action_log_prob'], 
-            #         "pr_action_entropy": 0 if sdt_out is None else sdt_out['pr_action_entropy'],}
+            dist_params = {}
+            for i in range(adt_out['alpha'].shape[1]):
+                dist_params[f"alpha_{i}"] =  torch.mean(adt_out['alpha'][:, i]).item()
+                dist_params[f"epsilon_{i}"] =  torch.mean(adt_out['epsilon'][:, i]).item()
+
+            if sdt_out is not None:
+                for i in range(sdt_out['sigma'].shape[1]):
+                    dist_params[f"mu_{i}"] =  torch.mean(sdt_out['mu'][:, i]).item()
+                    dist_params[f"sigma_{i}"] =  torch.mean(sdt_out['sigma'][:, i]).item()
+
+            if self.logger is not None:
+                self.logger.add_entry(
+                    step=self.step,
+                    hyperparams={"lambda1": self.config.lambda1, "lambda2": self.config.lambda2},
+                    tr_losses={"loss": loss,
+                            "rtg_loss": adt_out['rtg_loss'], 
+                            "rtg_log_prob": adt_out['rtg_log_prob'], 
+                            "rtg_entropy": adt_out['rtg_entropy'], 
+                            "adv_action_loss": adt_out['adv_action_loss'],
+                            "pr_action_loss": 0 if sdt_out is None else sdt_out['loss'],
+                            "pr_action_log_prob": 0 if sdt_out is None else sdt_out['pr_action_log_prob'], 
+                            "pr_action_entropy": 0 if sdt_out is None else sdt_out['pr_action_entropy'],},
+                    dist_params=dist_params,
+                    log=True
+                )
+
             return {"loss": loss}
         else:
             adt_out = self.adt.forward(

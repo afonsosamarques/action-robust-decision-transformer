@@ -60,7 +60,7 @@ class TrainableDT(DecisionTransformerModel):
         timesteps = torch.cat([torch.zeros((1, padlen), dtype=torch.long, device=device), timesteps], dim=1)
 
         # forward pass
-        _, action_preds, _ = model.forward(
+        _, action_preds, _ = model.original_forward(
             states=states,
             actions=actions,
             rewards=rewards,

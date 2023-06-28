@@ -1,76 +1,45 @@
 import json
+import os
+import traceback
+
 import gymnasium as gym
 import numpy as np
 import torch
+import wandb
 
 from collections import defaultdict
 
 from datasets import load_dataset, load_from_disk
 from huggingface_hub import login
-from transformers import DecisionTransformerModel, DecisionTransformerConfig, Trainer, TrainingArguments
+from transformers import DecisionTransformerConfig, Trainer, TrainingArguments
 
 from model.ardt_utils import DecisionTransformerGymDataCollator
 from model.ardt_vanilla import SingleAgentRobustDT
 from model.ardt_full import TwoAgentRobustDT
+from model.trainable_dt import TrainableDT
 
 from utils.helpers import set_seed_everywhere
+from utils.logger import Logger
 
-from access_tokens import HF_WRITE_TOKEN
+from access_tokens import HF_WRITE_TOKEN, WANDB_TOKEN
 
 
+MAX_RETURN = 15000.0
 RETURNS_SCALE = 1000.0
+BATCH_SIZE = 32
 CONTEXT_SIZE = 20
-N_EPOCHS = 300 
-WARMUP_EPOCHS = 30
-EVAL_ITERS = 20
-
-
-def get_action_no_adv(model, states, actions, rewards, returns_to_go, timesteps, device):
-    # NOTE this implementation does not condition on past rewards
-    # reshape to model input format
-    states = states.reshape(1, -1, model.config.state_dim)
-    actions = actions.reshape(1, -1, model.config.act_dim)
-    returns_to_go = returns_to_go.reshape(1, -1, 1)
-    timesteps = timesteps.reshape(1, -1)
-
-    # normalisation constants
-    state_mean = torch.from_numpy(np.array(model.config.state_mean).astype(np.float32)).to(device=device)
-    state_std = torch.from_numpy(np.array(model.config.state_std).astype(np.float32)).to(device=device)
-
-    # retrieve window of observations based on context length
-    states = states[:, -model.config.context_size :]
-    actions = actions[:, -model.config.context_size :]
-    returns_to_go = returns_to_go[:, -model.config.context_size :]
-    timesteps = timesteps[:, -model.config.context_size :]
-
-    # normalisation
-    states = (states - state_mean) / state_std
-
-    # pad all tokens to sequence length
-    padlen = model.config.context_size - states.shape[1]
-    attention_mask = torch.cat([torch.zeros(padlen, device=device), torch.ones(states.shape[1], device=device)]).to(dtype=torch.long).reshape(1, -1)
-    states = torch.cat([torch.zeros((1, padlen, model.config.state_dim), device=device), states], dim=1).float()
-    actions = torch.cat([torch.zeros((1, padlen, model.config.act_dim), device=device), actions], dim=1).float()
-    returns_to_go = torch.cat([torch.zeros((1, padlen, 1), device=device), returns_to_go], dim=1).float()
-    timesteps = torch.cat([torch.zeros((1, padlen), dtype=torch.long, device=device), timesteps], dim=1)
-
-    # forward pass
-    _, action_preds, _ = model.forward(
-        states=states,
-        actions=actions,
-        rewards=rewards,
-        returns_to_go=returns_to_go,
-        timesteps=timesteps,
-        attention_mask=attention_mask,
-        return_dict=False,
-    )
-
-    return action_preds[0, -1]
+N_EPOCHS = 300
+WARMUP_STEPS = int(RETURNS_SCALE/BATCH_SIZE) * 25
+EVAL_ITERS = 1
+WANDB_PROJECT = "ARDT-Project"
+TRACEBACK = False
 
 
 def load_model(model_type, model_to_use):
     if model_type == "dt":
-        return DecisionTransformerModel.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True), False
+        config = DecisionTransformerConfig.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True)
+        model = TrainableDT(config)
+        return model.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True), False
     elif model_type == "ardt-vanilla":
         config = DecisionTransformerConfig.from_pretrained(f"afonsosamarques/{model_to_use}", use_auth_token=True)
         model = SingleAgentRobustDT(config)
@@ -84,17 +53,26 @@ def load_model(model_type, model_to_use):
         
 
 def evaluate(model_name, model_type):
-    chosen_env = "HalfCheetah-v4"
-    env_target_per_1000 = 12000
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-
-    eval_dict = {}
+    #
+    # admin
+    device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda:0" if torch.cuda.is_available() else "cpu"))
     print("==================================================")
     print(f"Evaluating model {model_name}...")
+    eval_dict = {}
+
+    # setting up environment and respective configs
+    chosen_env = "HalfCheetah-v4"
+    max_return = 15000.0 if chosen_env == "HalfCheetah-v4" else None
+    env_target_per_1000 = 12000.0 if chosen_env == "HalfCheetah-v4" else None
+    if max_return is None or env_target_per_1000 is None:
+        raise Exception(f"Environment {chosen_env} not configured correctly. Missing max and target returns.")
+
+    # load model
     model, is_adv = load_model(model_type, model_name)
     model.to(device)
     eval_dict[model_name] = defaultdict(list)
 
+    # evaluation loop
     for i in range(EVAL_ITERS):
         if (i+1) % 5 == 0:
             print(f"Run number {i}...")
@@ -139,8 +117,7 @@ def evaluate(model_name, model_type):
                     adv_actions[-1] = adv_action
                     action = pr_action.detach().cpu().numpy()
                 else:
-                    action = get_action_no_adv(
-                        model,
+                    action = model.get_action(
                         states,
                         actions,
                         rewards,
@@ -184,13 +161,18 @@ def evaluate(model_name, model_type):
         print("\n")
 
     # save eval_dict as json
-    with open(f'./eval-outputs/{model_name}.json', 'w') as f:
+    with open(f'./eval-outputs-pipeline/{model_name}.json', 'w') as f:
         json.dump(eval_dict, f)
 
 
 if __name__ == "__main__":
+    #
+    # admin
     login(token=HF_WRITE_TOKEN)
+    wandb.login(key=WANDB_TOKEN)
+    os.environ["WANDB_PROJECT"] = WANDB_PROJECT
 
+    # set run parameters
     datasets = ["./datasets/d4rl_expert_halfcheetah", "./datasets/rarl_halfcheetah_v1"]
     dataset_names = ["d4rl", "rarl"] 
 
@@ -217,6 +199,7 @@ if __name__ == "__main__":
                    "ardt-full",
                    "ardt-full"]
 
+    # training loop
     for dataset_path, dataset_name in zip(datasets, dataset_names):
         for chosen_agent, (l1, l2), model_name, model_type in zip(models, params, model_names, model_types):
             dataset = load_from_disk(dataset_path)
@@ -224,44 +207,62 @@ if __name__ == "__main__":
                 dataset = dataset.select(range(200, 1200))
 
             print("============================================================================================================")
-            print(f"\nTraining {chosen_agent} with l1={l1} and l2={l2}")
+            print(f"\nTraining {model_name} with l1={l1} and l2={l2}")
 
             try:
-                collator = DecisionTransformerGymDataCollator(dataset, context_size=CONTEXT_SIZE, returns_scale=RETURNS_SCALE)
-                config = DecisionTransformerConfig(state_dim=collator.state_dim, 
-                                                pr_act_dim=collator.pr_act_dim,
-                                                adv_act_dim=collator.adv_act_dim,
-                                                max_ep_len=collator.max_ep_len,
-                                                context_size=collator.context_size,
-                                                state_mean=list(collator.state_mean),
-                                                state_std=list(collator.state_std),
-                                                scale=collator.scale,
-                                                lambda1=l1,
-                                                lambda2=l2,
-                                                warmup_epochs=WARMUP_EPOCHS,
-                                                returns_scale=RETURNS_SCALE,
-                                                max_return=15000) # NOTE completely random, potentially not needed
-                model = chosen_agent(config)
+                collator = DecisionTransformerGymDataCollator(
+                    dataset=dataset, 
+                    context_size=CONTEXT_SIZE, 
+                    returns_scale=RETURNS_SCALE
+                )
+                
+                config = DecisionTransformerConfig(
+                    state_dim=collator.state_dim, 
+                    pr_act_dim=collator.pr_act_dim,
+                    adv_act_dim=collator.adv_act_dim,
+                    max_ep_len=collator.max_ep_len,
+                    context_size=collator.context_size,
+                    state_mean=list(collator.state_mean),
+                    state_std=list(collator.state_std),
+                    scale=collator.scale,
+                    lambda1=l1,
+                    lambda2=l2,
+                    warmup_steps=WARMUP_STEPS,
+                    returns_scale=RETURNS_SCALE,
+                    max_return=MAX_RETURN
+                )
 
                 full_model_name = model_name + "_" + dataset_name
                 training_args = TrainingArguments(
                     output_dir="./agents-pipeline/" + full_model_name,
                     remove_unused_columns=False,
                     num_train_epochs=N_EPOCHS,
-                    per_device_train_batch_size=64,
+                    per_device_train_batch_size=BATCH_SIZE,
                     optim="adamw_torch",
                     learning_rate=1e-4,
                     weight_decay=1e-4,
-                    warmup_ratio=0.1,
+                    warmup_ratio=0.0, # FIXME just changed it
                     max_grad_norm=0.25,
                     use_mps_device=True,
                     push_to_hub=True,
-                    report_to="none",
+                    dataloader_num_workers=1,
+                    log_level="info",
+                    logging_steps=1,
+                    report_to="wandb",
+                    run_name=full_model_name,
                     hub_model_id=full_model_name,
                 )
 
+                logger = Logger(
+                    name=WANDB_PROJECT + "-" + full_model_name, 
+                    model_name=model_name, 
+                    dataset_name=dataset_name, 
+                    config=config, 
+                    training_args=training_args
+                )
+
                 trainer = Trainer(
-                    model=model,
+                    model=chosen_agent(config, logger),
                     args=training_args,
                     train_dataset=dataset,
                     data_collator=collator,
@@ -270,10 +271,17 @@ if __name__ == "__main__":
                 trainer.train()
                 trainer.save_model()
                 evaluate(full_model_name, model_type)
+
             except Exception as e:
                 print("====================================")
-                print(f"Exception training/evaluating model {chosen_agent}. Skipping...")
-                print(e)
+                print(f"Exception training/evaluating model {model_name}. Skipping...")
+                if TRACEBACK:
+                    traceback.print_exc()
+                else:
+                    print(e)
 
     print("============================================================================================================")
     evaluate("dt-halfcheetah-v2", "dt")
+    evaluate("dt-halfcheetah-rarl", "dt")
+
+    wandb.finish()
