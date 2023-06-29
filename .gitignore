@@ -5,9 +5,12 @@ datasets/
 env-sims/
 agents/
 agents-pipeline/
-eval-outputs-pipeline/
+agents-test/
 eval-outputs/
+eval-outputs-pipeline/
+eval-outputs-test/
 wandb/
+wandb-json/
 access_tokens.py
 screenshots/
 steps-ucl-cluster/

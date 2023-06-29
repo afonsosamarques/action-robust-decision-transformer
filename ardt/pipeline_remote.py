@@ -33,6 +33,7 @@ WARMUP_STEPS = 0  # FIXME int(RETURNS_SCALE/BATCH_SIZE) * 25
 EVAL_ITERS = 1
 WANDB_PROJECT = "ARDT-Project"
 TRACEBACK = True
+SUFFIX = '-test'
 
 
 def load_model(model_type, model_to_use):
@@ -161,7 +162,7 @@ def evaluate(model_name, model_type):
         print("\n")
 
     # save eval_dict as json
-    with open(f'./eval-outputs-pipeline/{model_name}.json', 'w') as f:
+    with open(f'./eval-outputs{SUFFIX}/{model_name}.json', 'w') as f:
         json.dump(eval_dict, f)
 
 
@@ -198,6 +199,20 @@ if __name__ == "__main__":
                    "ardt-full",
                    "ardt-full",
                    "ardt-full"]
+    
+    datasets = ["./datasets/rarl_halfcheetah_v1"]
+    dataset_names = ["rarl"] 
+
+    params = [(0.05, 8.0),
+              (0.05, 8.0)]
+
+    model_names = ["ardt_vanilla_all_plus_adv",
+                   "ardt_full_all_plus_adv"]
+    
+    model_types = ["ardt-vanilla",
+                   "ardt-full"]
+    
+    models = [SingleAgentRobustDT, TwoAgentRobustDT]
 
     # training loop
     for dataset_path, dataset_name in zip(datasets, dataset_names):
@@ -234,7 +249,7 @@ if __name__ == "__main__":
 
                 full_model_name = model_name + "_" + dataset_name
                 training_args = TrainingArguments(
-                    output_dir="./agents-pipeline/" + full_model_name,
+                    output_dir=f"./agents{SUFFIX}/" + full_model_name,
                     remove_unused_columns=False,
                     num_train_epochs=N_EPOCHS,
                     per_device_train_batch_size=BATCH_SIZE,
