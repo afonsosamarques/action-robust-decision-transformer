@@ -118,6 +118,8 @@ class SingleAgentRobustDT(DecisionTransformerModel):
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next adv action given return, state and pr_action
 
         if is_train:
+            self.step += 1
+
             # return loss
             pr_action_log_prob = -pr_action_dist.log_prob(pr_actions).sum(axis=2)[attention_mask > 0].mean()
             pr_action_entropy = -pr_action_dist.entropy().mean()
@@ -127,15 +129,20 @@ class SingleAgentRobustDT(DecisionTransformerModel):
             adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
+            dist_params = {}
+            for i in range(sigma_preds.shape[2]):
+                dist_params[f"mu_{i}"] =  torch.mean(mu_preds[:, :, i]).item()
+                dist_params[f"sigma_{i}"] =  torch.mean(sigma_preds[:, :, i]).item()
+
             if self.logger is not None:
                 self.logger.add_entry(
                     step=self.step,
                     hyperparams={"lambda1": self.config.lambda1, "lambda2": self.config.lambda2},
                     tr_losses={"loss": (pr_action_loss + adv_action_loss).item(), 
-                            "pr_action_loss": pr_action_loss.item(), 
-                            "pr_action_log_prob": pr_action_log_prob.item(), 
-                            "pr_action_entropy": pr_action_entropy.item(), 
-                            "adv_action_loss": adv_action_loss.item()},
+                               "pr_action_loss": pr_action_loss.item(), 
+                               "pr_action_log_prob": pr_action_log_prob.item(), 
+                               "pr_action_entropy": pr_action_entropy.item(), 
+                               "adv_action_loss": adv_action_loss.item()},
                     dist_params={f"sigma_{i}": torch.mean(sigma_preds[:, i]).item() for i in range(sigma_preds.shape[1])},
                     log=True
                 )

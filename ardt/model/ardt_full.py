@@ -335,14 +335,14 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 loss += sdt_out['loss']
 
             dist_params = {}
-            for i in range(adt_out['alpha'].shape[1]):
-                dist_params[f"alpha_{i}"] =  torch.mean(adt_out['alpha'][:, i]).item()
-                dist_params[f"epsilon_{i}"] =  torch.mean(adt_out['epsilon'][:, i]).item()
+            for i in range(adt_out['alpha'].shape[2]):
+                dist_params[f"alpha_{i}"] =  torch.mean(adt_out['alpha'][:, :, i]).item()
+                dist_params[f"epsilon_{i}"] =  torch.mean(adt_out['epsilon'][:, :, i]).item()
 
             if sdt_out is not None:
-                for i in range(sdt_out['sigma'].shape[1]):
-                    dist_params[f"mu_{i}"] =  torch.mean(sdt_out['mu'][:, i]).item()
-                    dist_params[f"sigma_{i}"] =  torch.mean(sdt_out['sigma'][:, i]).item()
+                for i in range(sdt_out['sigma'].shape[2]):
+                    dist_params[f"mu_{i}"] =  torch.mean(sdt_out['mu'][:, :, i]).item()
+                    dist_params[f"sigma_{i}"] =  torch.mean(sdt_out['sigma'][:, :, i]).item()
 
             if self.logger is not None:
                 self.logger.add_entry(

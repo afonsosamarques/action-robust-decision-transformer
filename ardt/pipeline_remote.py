@@ -28,7 +28,7 @@ MAX_RETURN = 15000.0
 RETURNS_SCALE = 1000.0
 BATCH_SIZE = 32
 CONTEXT_SIZE = 20
-N_EPOCHS = 2  # FIXME
+N_EPOCHS = 5  # FIXME
 WARMUP_STEPS = 0  # FIXME int(RETURNS_SCALE/BATCH_SIZE) * 25
 EVAL_ITERS = 1
 WANDB_PROJECT = "ARDT-Project"
@@ -199,20 +199,6 @@ if __name__ == "__main__":
                    "ardt-full",
                    "ardt-full",
                    "ardt-full"]
-    
-    datasets = ["./datasets/rarl_halfcheetah_v1"]
-    dataset_names = ["rarl"] 
-
-    params = [(0.05, 8.0),
-              (0.05, 8.0)]
-
-    model_names = ["ardt_vanilla_all_plus_adv",
-                   "ardt_full_all_plus_adv"]
-    
-    model_types = ["ardt-vanilla",
-                   "ardt-full"]
-    
-    models = [SingleAgentRobustDT, TwoAgentRobustDT]
 
     # training loop
     for dataset_path, dataset_name in zip(datasets, dataset_names):
@@ -285,6 +271,7 @@ if __name__ == "__main__":
 
                 trainer.train()
                 trainer.save_model()
+                logger.report_all()
                 evaluate(full_model_name, model_type)
 
             except Exception as e:

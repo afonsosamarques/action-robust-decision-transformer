@@ -26,8 +26,8 @@ class Logger:
                 entry['eval_losses'] = eval_losses
             return entry
 
-        def _log_wandb(self, step, entry):
-            for key, value in entry.entry.items():
+        def _log_wandb(step, entry):
+            for key, value in entry.items():
                 if key != 'step':
                     wandb.log({key: value}, step=step)
 
@@ -56,8 +56,8 @@ class Logger:
             "max_return": self.config.max_return,
             "init_lambda1": self.config.lambda1,
             "init_lambda2": self.config.lambda2,
-            "warmup_epochs": self.config.warmup_epochs,
-            "e2e_epochs": self.training_args.num_train_epochs - self.config.warmup_epochs,
+            "warmup_steps": self.config.warmup_steps,
+            "epochs": self.training_args.num_train_epochs,
             "batch_size": self.training_args.per_device_train_batch_size,
             "init_learning_rate": self.training_args.learning_rate,
             "weight_decay": self.training_args.weight_decay,

@@ -271,6 +271,7 @@ if __name__ == "__main__":
 
                 trainer.train()
                 trainer.save_model()
+                logger.report_all()
                 evaluate(full_model_name, model_type)
 
             except Exception as e:
