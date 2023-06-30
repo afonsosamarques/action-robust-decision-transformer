@@ -11,6 +11,7 @@ eval-outputs-test/
 wandb/
 wandb-json/
 access_tokens.py
+pipeline_remote.py
 screenshots/
 steps-ucl-cluster/
 **/.DS_Store

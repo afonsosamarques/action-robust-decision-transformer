@@ -175,6 +175,7 @@ class StochasticDT(DecisionTransformerModel):
     def forward(
         self,
         is_train=True,
+        incl_entropy=True,
         states=None,
         pr_actions=None,
         adv_actions=None,
@@ -242,7 +243,7 @@ class StochasticDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 3, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        # FIXME check indexing, this seems off
+        # FIXME check indexing, this seems off  
         mu_preds = self.predict_mu(x[:, 1])  # predict next action dist. mean given returns and states
         sigma_preds = self.predict_sigma(x[:, 1])  # predict next action dist. sigma given returns and states
         pr_action_dist = torch.distributions.Normal(mu_preds, sigma_preds)
@@ -298,7 +299,10 @@ class TwoAgentRobustDT(DecisionTransformerModel):
         #
         # easier if we simply separate between training and testing straight away
         if is_train:
+            # initially we train only the ADT, which will work as a sort of "teacher" for the SDT
+            # but then we train the SDT for a few iterations to make sure it can learn from the ADT
             self.step += 1
+            loss = 0
 
             adt_out = self.adt.forward(
                 is_train=is_train,
@@ -314,11 +318,10 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 output_attentions=output_attentions,
                 return_dict=return_dict,
             )
-            loss = adt_out['loss']
+            loss += adt_out['loss']
 
             sdt_out = None
             if self.step > self.config.warmup_steps:
-                # initially we train only the ADT, which will work as a sort of "teacher" for the SDT
                 sdt_out = self.sdt.forward(
                     is_train=is_train,
                     states=states,
@@ -335,9 +338,10 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 loss += sdt_out['loss']
 
             dist_params = {}
-            for i in range(adt_out['alpha'].shape[2]):
-                dist_params[f"alpha_{i}"] =  torch.mean(adt_out['alpha'][:, :, i]).item()
-                dist_params[f"epsilon_{i}"] =  torch.mean(adt_out['epsilon'][:, :, i]).item()
+            if adt_out is not None:
+                for i in range(adt_out['alpha'].shape[2]):
+                    dist_params[f"alpha_{i}"] =  torch.mean(adt_out['alpha'][:, :, i]).item()
+                    dist_params[f"epsilon_{i}"] =  torch.mean(adt_out['epsilon'][:, :, i]).item()
 
             if sdt_out is not None:
                 for i in range(sdt_out['sigma'].shape[2]):
@@ -349,13 +353,13 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                     step=self.step,
                     hyperparams={"lambda1": self.config.lambda1, "lambda2": self.config.lambda2},
                     tr_losses={"loss": loss,
-                            "rtg_loss": adt_out['rtg_loss'], 
-                            "rtg_log_prob": adt_out['rtg_log_prob'], 
-                            "rtg_entropy": adt_out['rtg_entropy'], 
-                            "adv_action_loss": adt_out['adv_action_loss'],
-                            "pr_action_loss": 0 if sdt_out is None else sdt_out['loss'],
-                            "pr_action_log_prob": 0 if sdt_out is None else sdt_out['pr_action_log_prob'], 
-                            "pr_action_entropy": 0 if sdt_out is None else sdt_out['pr_action_entropy'],},
+                               "rtg_loss": adt_out['rtg_loss'], 
+                               "rtg_log_prob": adt_out['rtg_log_prob'], 
+                               "rtg_entropy": adt_out['rtg_entropy'], 
+                               "adv_action_loss": adt_out['adv_action_loss'],
+                               "pr_action_loss": 0 if sdt_out is None else sdt_out['loss'],
+                               "pr_action_log_prob": 0 if sdt_out is None else sdt_out['pr_action_log_prob'], 
+                               "pr_action_entropy": 0 if sdt_out is None else sdt_out['pr_action_entropy'],},
                     dist_params=dist_params,
                     log=True
                 )
@@ -381,7 +385,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 rtg_preds, adv_action_preds = adt_out.rtg_preds, adt_out.adv_action_preds
 
             sdt_out = self.sdt.forward(
-               is_train=is_train,
+                is_train=is_train,
                 states=states,
                 pr_actions=pr_actions,
                 adv_actions=adv_actions,

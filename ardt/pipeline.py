@@ -29,11 +29,13 @@ RETURNS_SCALE = 1000.0
 BATCH_SIZE = 32
 CONTEXT_SIZE = 20
 N_EPOCHS = 300
-WARMUP_STEPS = int(RETURNS_SCALE/BATCH_SIZE) * 25
-EVAL_ITERS = 1
+WARMUP_EPOCHS = N_EPOCHS // 8
+WARMUP_STEPS = int(RETURNS_SCALE/BATCH_SIZE * WARMUP_EPOCHS)
+EVAL_ITERS = 20
 WANDB_PROJECT = "ARDT-Project"
 TRACEBACK = False
 SUFFIX = '-pipeline'
+IS_ADV_EVAL = False
 
 
 def load_model(model_type, model_to_use):
@@ -53,7 +55,29 @@ def load_model(model_type, model_to_use):
         raise Exception(f"Model {model_to_use} of type {model_type} not available.")
         
 
-def evaluate(model_name, model_type):
+def sample_env_params(env):
+    mb = env.model.body_mass
+    mb = torch.tensor(mb)
+    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*1.0)
+    mb = gauss.sample()
+    env.model.body_mass = np.array(mb)
+    
+    mb = env.model.opt.gravity
+    mb = torch.tensor(mb)
+    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*1.0)
+    mb = gauss.sample()
+    env.model.opt.gravity = np.array(mb)
+
+    mb = env.model.geom_friction
+    mb = torch.tensor(mb)
+    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.1)
+    mb = gauss.sample()
+    env.model.geom_friction = np.array(mb)
+
+    return env
+
+
+def evaluate(model_name, model_type, is_adv_eval=False):
     #
     # admin
     device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda:0" if torch.cuda.is_available() else "cpu"))
@@ -69,7 +93,7 @@ def evaluate(model_name, model_type):
         raise Exception(f"Environment {chosen_env} not configured correctly. Missing max and target returns.")
 
     # load model
-    model, is_adv = load_model(model_type, model_name)
+    model, is_adv_model = load_model(model_type, model_name)
     model.to(device)
     eval_dict[model_name] = defaultdict(list)
 
@@ -81,13 +105,18 @@ def evaluate(model_name, model_type):
         with torch.no_grad():
             env = gym.make(chosen_env, render_mode="rgb_array")
             set_seed_everywhere(i*3, env)
+
+            if is_adv_eval:
+                env = sample_env_params(env)
+                print("Checking that sampling worked. Gravity: ", env.model.opt.gravity)
+            
             state, _ = env.reset()
 
             returns_scale = model.config.returns_scale if "returns_scale" in model.config.to_dict().keys() else 1000.0  # NOTE compatibility
             episode_return, episode_length = 0, 0
             target_return = torch.tensor(env_target_per_1000/returns_scale, device=device, dtype=torch.float32).reshape(1, 1)
             states = torch.from_numpy(state).reshape(1, model.config.state_dim).to(device=device, dtype=torch.float32)
-            if is_adv:
+            if is_adv_model:
                 pr_actions = torch.zeros((0, model.config.pr_act_dim), device=device, dtype=torch.float32)
                 adv_actions = torch.zeros((0, model.config.adv_act_dim), device=device, dtype=torch.float32)
             else:
@@ -96,7 +125,7 @@ def evaluate(model_name, model_type):
             timesteps = torch.tensor(0, device=device, dtype=torch.long).reshape(1, 1)
 
             for t in range(model.config.max_ep_len):
-                if is_adv:
+                if is_adv_model:
                     pr_actions = torch.cat([pr_actions, torch.zeros((1, model.config.pr_act_dim), device=device)], dim=0)
                     adv_actions = torch.cat([adv_actions, torch.zeros((1, model.config.adv_act_dim), device=device)], dim=0)
                 else:
@@ -104,7 +133,7 @@ def evaluate(model_name, model_type):
             
                 rewards = torch.cat([rewards, torch.zeros(1, device=device)])
 
-                if is_adv:
+                if is_adv_model:
                     pr_action, adv_action = model.get_action(
                         states,
                         pr_actions,
@@ -272,7 +301,7 @@ if __name__ == "__main__":
                 trainer.train()
                 trainer.save_model()
                 logger.report_all()
-                evaluate(full_model_name, model_type)
+                evaluate(full_model_name, model_type, is_adv=IS_ADV_EVAL)
 
             except Exception as e:
                 print("====================================")
@@ -283,7 +312,7 @@ if __name__ == "__main__":
                     print(e)
 
     print("============================================================================================================")
-    evaluate("dt-halfcheetah-v2", "dt")
-    evaluate("dt-halfcheetah-rarl", "dt")
+    evaluate("dt_halfcheetah-d4rl_expert", "dt")
+    evaluate("dt_halfcheetah-rarl_v1", "dt")
 
     wandb.finish()

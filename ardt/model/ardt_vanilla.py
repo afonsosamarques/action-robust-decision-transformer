@@ -40,7 +40,7 @@ class SingleAgentRobustDT(DecisionTransformerModel):
     def forward(
         self,
         is_train=True,
-        pred_adv=True,
+        pred_adv=None,
         states=None,
         pr_actions=None,
         adv_actions=None,
@@ -125,9 +125,12 @@ class SingleAgentRobustDT(DecisionTransformerModel):
             pr_action_entropy = -pr_action_dist.entropy().mean()
             pr_action_loss = pr_action_log_prob + self.config.lambda1 * pr_action_entropy
 
-            adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
-            adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
-            adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
+            pred_adv = pred_adv if pred_adv is not None else (self.step > self.config.warmup_steps)
+            adv_action_loss = torch.tensor(0)
+            if pred_adv:
+                adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
+                adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
+                adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
             dist_params = {}
             for i in range(sigma_preds.shape[2]):
@@ -143,7 +146,7 @@ class SingleAgentRobustDT(DecisionTransformerModel):
                                "pr_action_log_prob": pr_action_log_prob.item(), 
                                "pr_action_entropy": pr_action_entropy.item(), 
                                "adv_action_loss": adv_action_loss.item()},
-                    dist_params={f"sigma_{i}": torch.mean(sigma_preds[:, i]).item() for i in range(sigma_preds.shape[1])},
+                    dist_params=dist_params,
                     log=True
                 )
 
