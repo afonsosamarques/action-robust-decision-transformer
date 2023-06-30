@@ -45,9 +45,6 @@ class Logger:
 
     def report_all(self, with_entries=False):
         report = {
-            "python_rnd": random.getstate(),
-            "np_rnd": np.random.get_state(),
-            "pytorch_rnd": torch.get_rng_state(),
             "model_name": self.model_name,
             "dataset_name": self.dataset_name,
             "max_episode_length": self.config.max_ep_len,

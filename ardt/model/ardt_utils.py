@@ -25,7 +25,7 @@ class DecisionTransformerGymDataCollator:
     pr_act_dim: int = 1  # size of protagonist action space
     adv_act_dim: int = 1  # size of antagonist action space
     max_ep_len: int = 9999999  # max episode length in the dataset
-    scale: float = 1  # normalisation of rewards/returns
+    returns_scale: float = 1  # normalisation of rewards/returns
     state_mean: np.array = None  # to store state means
     state_std: np.array = None  # to store state stds
     p_sample: np.array = None  # a distribution weighing episodes by trajectory lengths
