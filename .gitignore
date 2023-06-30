@@ -1,6 +1,5 @@
 #  Add-hoc gitignore for python project
-dt-halfcheetah-*
-dt-walker2d-*
+dt_halfcheetah-*
 datasets/
 env-sims/
 agents/
