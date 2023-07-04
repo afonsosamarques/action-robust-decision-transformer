@@ -19,6 +19,7 @@ def evaluate(
         model_name, 
         model_type,
         env_name,
+        env_type,
         eval_iters,
         eval_target,
         is_adv_eval=False,
@@ -39,8 +40,8 @@ def evaluate(
     set_seed_everywhere(np.random.randint(0, 10000))
     
     # evaluation loop
-    print("==========================================================================================")
-    print(f"Evaluating model {model_name} on environment {env_name}.")
+    print("\n================================================")
+    print(f"Evaluating model {model_name} on environment {env_type}.")
 
     # TODO implement!!!!!!!!!!!!!!!!!!
     return
@@ -59,7 +60,7 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
     config = check_evalrun_config(config)
 
-    env_name = load_env_name(config.env_name)
+    env_name = load_env_name(config.env_type)
     run_suffix = load_run_suffix(config.run_type)
 
     # perform evaluation
@@ -68,6 +69,7 @@ if __name__ == "__main__":
             model_name=model_name, 
             model_type=model_type,
             env_name=env_name,
+            env_type=config.env_type,
             eval_iters=config.eval_iters,
             eval_target=config.eval_target_return,
             is_adv_eval=config.is_adv_eval,

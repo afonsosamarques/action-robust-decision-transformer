@@ -118,7 +118,7 @@ class DecisionTransformerGymDataCollator:
                 axis=1,
             )
 
-            rtg[-1] /= self.scale
+            rtg[-1] /= self.returns_scale
             rtg[-1] = np.concatenate(
                 [np.zeros((1, padlen, 1)) * 1.0, rtg[-1]], 
                 axis=1,

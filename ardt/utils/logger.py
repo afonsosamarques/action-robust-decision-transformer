@@ -68,7 +68,6 @@ class Logger:
             "adam_epsilon": self.training_args.adam_epsilon,
             "warmup_steps": self.training_args.warmup_steps,
             "max_grad_norm": self.training_args.max_grad_norm,
-            "dropout": self.training_args.dropout,
         }
 
         if with_entries:

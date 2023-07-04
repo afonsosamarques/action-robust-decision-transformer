@@ -35,6 +35,7 @@ def train(
     ):
     print("============================================================================================================")
     print(f"\nTraining {model_name} on dataset {dataset_name} on device {device}. Starting at {datetime.datetime.now()}.\n")
+    print("================================================")
     wandb.init()
 
     # here we define the data treatment
@@ -70,16 +71,16 @@ def train(
     training_args = TrainingArguments(
         output_dir=f"./agents{run_suffix}/" + model_name,
         remove_unused_columns=False,
-        num_train_steps=train_params['train_steps'],
+        max_steps=train_params['train_steps'],
         per_device_train_batch_size=train_params['train_batch_size'],
         optim="adamw_torch",
         learning_rate=train_params['learning_rate'],
         weight_decay=train_params['weight_decay'],
         warmup_steps=train_params['warmup_steps'],
         max_grad_norm=train_params['max_grad_norm'],
-        dataloader_num_workers=min(4, (1 if os.cpu_count() is None else os.cpu_count) // 2),
+        dataloader_num_workers=min(4, (1 if os.cpu_count() is None else os.cpu_count()) // 2),
         use_mps_device=(True if torch.backends.mps.is_available() else False),
-        logging_steps=train_params['warmup_steps']-1,
+        logging_steps=train_params['warmup_steps'],
         log_level="info",
         report_to="wandb",
         run_name=model_name,
@@ -108,7 +109,8 @@ def train(
     logger.report_all()
     wandb.finish()
 
-    print(f"\n\nExiting at {datetime.datetime.now()}.")
+    print(f"\n\nExiting at {datetime.datetime.now()}.\n")
+    print("================================================\n")
     return f"./agents{run_suffix}/" + model_name
 
 
@@ -141,8 +143,7 @@ if __name__ == "__main__":
     os.environ["WANDB_PROJECT"] = admin_config.wandb_project
     run_suffix = load_run_suffix(admin_config.run_type)
     
-    env_name = load_env_name(env_config.env_name)
-    dataset_path, dataset_name = build_dataset_path(dataset_config, env_name, is_local=dataset_config.is_local, hf_project=admin_config.hf_project)
+    dataset_path, dataset_name = build_dataset_path(dataset_config, env_config.env_type, is_local=dataset_config.is_local, hf_project=admin_config.hf_project)
     dataset = load_from_disk(dataset_path) if dataset_config.is_local else load_dataset(dataset_path)
 
     # retrieving (static) environment parameters
@@ -155,13 +156,12 @@ if __name__ == "__main__":
 
     train_steps = 10**train_config.train_steps
     train_batch_size = train_config.train_batch_size
-    learning_rate = train_config.learning_rate  # to iterate over
-    weight_decay = train_config.weight_decay  # to iterate over
+    learning_rate = [10**i for i in train_config.learning_rate]  # to iterate over
+    weight_decay = [10**i for i in train_config.weight_decay]  # to iterate over
     max_grad_norm = train_config.max_grad_norm  # to iterate over
     warmup_steps = [10**i for i in train_config.warmup_steps]  # to iterate over
-    dropout = train_config.dropout  # to iterate over
 
-    params = [context_size, l1, l2, learning_rate, weight_decay, max_grad_norm, warmup_steps, dropout]
+    params = [context_size, l1, l2, learning_rate, weight_decay, max_grad_norm, warmup_steps]
     params_combinations = list(itertools.product(*params))
 
     # build, train and evaluate models
@@ -178,13 +178,13 @@ if __name__ == "__main__":
             'weight_decay': params_combination[4],
             'max_grad_norm': params_combination[5],
             'warmup_steps': params_combination[6],
-            'dropout': params_combination[7],
         }
 
         # set up model
-        model_type = model_config.model_type
-        chosen_agent = load_agent(model_type)
-        model_name = build_model_name(model_type, env_name, dataset_name, env_params, model_params, train_params)
+        agent_type = model_config.agent_type
+        env_type = env_config.env_type
+        chosen_agent = load_agent(agent_type)
+        model_name = build_model_name(agent_type, env_type, dataset_name)
         
         # train and recover path
         model_path_local = train(
@@ -197,17 +197,19 @@ if __name__ == "__main__":
             train_params=train_params,
             wandb_project=admin_config.wandb_project,
             hf_project=admin_config.hf_project,
-            run_suffix=admin_config.run_suffix,
+            run_suffix=run_suffix,
             device=device,
         )
 
         # evaluate if desired
         if config.evaluation_config.is_eval:
+            env_name = load_env_name(env_config.env_type)
             evaluate(
                 model_name=model_name, 
-                model_type=model_type,
+                model_type=agent_type,
                 model_path_local=model_path_local,
                 env_name=env_name,
+                env_type=env_config.env_type,
                 eval_iters=eval_config.eval_iters,
                 eval_target=eval_config.eval_target_return,
                 is_adv_eval=eval_config.is_adv_eval,
@@ -215,4 +217,7 @@ if __name__ == "__main__":
                 run_suffix=run_suffix,
                 verbose=admin_config.is_verbose,
                 device=device,
-            )
+        )
+
+    print("\n========================================================================================================================")
+    print("Done. \n")

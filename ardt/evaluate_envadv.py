@@ -19,13 +19,11 @@ from access_tokens import HF_WRITE_TOKEN
 
 
 def scrappy_print_eval_dict(model_name, eval_dict):
-    print("\n==========================================================================================\n")
-    print(f"================== {model_name} ==================")
+    print(f"\n********** {model_name} **********")
     print(f"Initial target returns | Avg: {np.round(np.mean(eval_dict['init_target_return']), 4)} | Std: {np.round(np.std(eval_dict['init_target_return']), 4)} | Min: {np.round(np.min(eval_dict['init_target_return']), 4)} | Median: {np.round(np.median(eval_dict['init_target_return']), 4)} | Max: {np.round(np.max(eval_dict['init_target_return']), 4)}")
     print(f"Final target returns | Avg: {np.round(np.mean(eval_dict['final_target_return']), 4)} | Std: {np.round(np.std(eval_dict['final_target_return']), 4)} | Min: {np.round(np.min(eval_dict['final_target_return']), 4)} | Median: {np.round(np.median(eval_dict['final_target_return']), 4)} | Max: {np.round(np.max(eval_dict['final_target_return']), 4)}")
     print(f"Episode lengths | Avg: {np.round(np.mean(eval_dict['ep_length']), 4)} | Std: {np.round(np.std(eval_dict['ep_length']), 4)} | Min: {np.round(np.min(eval_dict['ep_length']), 4)} | Median: {np.round(np.median(eval_dict['ep_length']), 4)} | Max: {np.round(np.max(eval_dict['ep_length']), 4)}")
     print(f"Episode returns | Avg: {np.round(np.mean(eval_dict['ep_return']), 4)} | Std: {np.round(np.std(eval_dict['ep_return']), 4)} | Min: {np.round(np.min(eval_dict['ep_return']), 4)} | Median: {np.round(np.median(eval_dict['ep_return']), 4)} | Max: {np.round(np.max(eval_dict['ep_return']), 4)}")
-    print("\n")
         
 
 def sample_env_params(env):
@@ -54,6 +52,7 @@ def evaluate(
         model_name, 
         model_type,
         env_name,
+        env_type,
         eval_iters,
         eval_target,
         is_adv_eval=False,
@@ -74,8 +73,8 @@ def evaluate(
     model.to(device)
     
     # evaluation loop
-    print("==========================================================================================")
-    print(f"Evaluating model {model_name} on environment {env_name}.")
+    print("\n================================================")
+    print(f"Evaluating model {model_name} on environment {env_type}.")
 
     eval_dict = defaultdict(list)
     run_fails = 0
@@ -86,8 +85,8 @@ def evaluate(
         run_idx += 1
         if n_runs >= eval_iters:
             break
-        if (run_idx + 1) % min(5, eval_iters/2) == 0:
-            print(f"Run number {run_idx + 1}...")
+        if (run_idx % min(5, eval_iters/2)) == 0:
+            print(f"Run number {run_idx}...")
         
         try:
             with torch.no_grad():
@@ -173,6 +172,7 @@ def evaluate(
                         eval_dict['ep_return'].append(episode_return / returns_scale)
                         run_fails = 0
                         break
+        
         # when mujoco throws a warning about environment instability
         except Warning as w:
             run_fails += 1
@@ -183,6 +183,7 @@ def evaluate(
                 raise w
             print(f"Run {run_idx} failed with warning {w}")
             continue
+    
         # when mujoco throws an error about environment instability
         except Exception as e:
             run_fails += 1
@@ -219,7 +220,7 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
     config = check_evalrun_config(config)
 
-    env_name = load_env_name(config.env_name)
+    env_name = load_env_name(config.env_type)
     run_suffix = load_run_suffix(config.run_type)
 
     # perform evaluation
@@ -228,6 +229,7 @@ if __name__ == "__main__":
             model_name=model_name, 
             model_type=model_type,
             env_name=env_name,
+            env_type=config.env_type,
             eval_iters=config.eval_iters,
             eval_target=config.eval_target_return,
             is_adv_eval=config.is_adv_eval,
