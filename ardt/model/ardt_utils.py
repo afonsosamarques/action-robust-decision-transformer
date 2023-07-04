@@ -25,6 +25,7 @@ class DecisionTransformerGymDataCollator:
     pr_act_dim: int = 1  # size of protagonist action space
     adv_act_dim: int = 1  # size of antagonist action space
     max_ep_len: int = 9999999  # max episode length in the dataset
+    max_ep_return: int = 9999999  # max episode return in the dataset
     returns_scale: float = 1  # normalisation of rewards/returns
     state_mean: np.array = None  # to store state means
     state_std: np.array = None  # to store state stds
@@ -40,6 +41,7 @@ class DecisionTransformerGymDataCollator:
         self.state_dim = len(dataset[0]["observations"][0])
         self.context_size = context_size
         self.returns_scale = returns_scale
+        self.max_ep_return = max([np.sum(traj["rewards"]) for traj in dataset])
         # retrieve lower bounds for actions
         self.pr_act_lb = min(0.0, (int(np.min([np.min(traj["pr_actions"]) for traj in dataset])) - 1) * 5.0)
         self.adv_act_lb = min(0.0, (int(np.min(np.min([traj["adv_actions"] for traj in dataset]))) - 1) * 5.0)

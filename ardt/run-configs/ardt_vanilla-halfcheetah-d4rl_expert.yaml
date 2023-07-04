@@ -1,0 +1,38 @@
+environment_configs:
+  env_name: "halfcheetah"  # halfcheetah, hopper, walker2d
+  max_ep_len: 1000  # limit episode length for offline dataset
+  returns_scale: 1000  # scale returns, 1000 to match original DT implementation
+  max_ep_return: 15000  # max "possible" returns per episode of max len
+
+dataset_configs:
+  online_policy_name: "d4rl"  # d4rl, rarl
+  dataset_type: "train"  # train, test, expert
+  dataset_version: ""  # fill only if there is any type of versioning to the dataset being considered, otherwise leave blank
+
+model_configs:
+  model_type: "ardt-vanilla"  # dt, ardt-vanilla, ardt-full
+  context_size: [20]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
+  lambda1: [0.01, 0.05, 0.2]  # these are for different parameter combinations to try!!
+  lambda2: [4.0, 7.0, 10.0]  # these are for different parameter combinations to try!
+
+training_configs:
+  train_steps: 6  # 6 => 10**6
+  train_batch_size: 32  # 32/64
+  learning_rate: [-5, -4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
+  weight_decay: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
+  max_grad_norm: [0.25]  # these are for different parameter combinations to try!! | original: 0.25
+  warmup_steps: [3, 4]  # these are for different parameter combinations to try!! again 4 => 10**4 | original: 10**5
+  dropout: [0.1]  # these are for different parameter combinations to try!! | original: 0.1
+
+evaluation_configs:
+  is_eval: true  # whether to run evaluation
+  is_adv_eval: true  # whether to run adversarial evaluation (sampling different environments only for now)
+  eval_target_return: 12000  # note this should depend on environment!! 12k/6k for halfcheetah for example
+  eval_iters: 20  # just enough to get some CLT going
+
+admin_configs:
+  wandb_project: "ARDT-Project"  # "afonsosamarques", "ARDT-Project"
+  hf_project: "afonsosamarques"  # "afonsosamarques", "ARDT-Project"
+  run_type: "pipeline"  # "core", "pipeline", or "test"
+  is_verbose: false  # whether to print anything at all
+  print_tracebacks: false  # whether to print tracebacks of errors

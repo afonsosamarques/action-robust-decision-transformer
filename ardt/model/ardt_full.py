@@ -115,7 +115,7 @@ class AdversarialDT(DecisionTransformerModel):
 
         if is_train:
             # return loss
-            scaled_rtg = (returns_to_go + self.config.max_return) / (self.config.max_return * 2)
+            scaled_rtg = (returns_to_go + self.config.max_ep_return) / (self.config.max_ep_return * 2)
             rtg_log_prob = -rtg_dist.log_prob(scaled_rtg).sum(axis=2)[attention_mask > 0].mean()
             rtg_entropy = -rtg_dist.entropy().mean()
             rtg_loss = rtg_log_prob + self.config.lambda1 * rtg_entropy
@@ -136,7 +136,7 @@ class AdversarialDT(DecisionTransformerModel):
                     "rtg_preds": rtg_dist.rsample()}
         else:
             # return predictions
-            rtg_pred_scaled = rtg_dist.mean * (self.config.max_return * 2) - self.config.max_return
+            rtg_pred_scaled = rtg_dist.mean * (self.config.max_ep_return * 2) - self.config.max_return
             if not return_dict:
                 return (rtg_pred_scaled, adv_action_preds)
 

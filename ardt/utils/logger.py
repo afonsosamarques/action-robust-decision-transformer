@@ -7,11 +7,11 @@ import wandb
 
 
 class Logger:
-    def __init__(self, name, model_name, dataset_name, config, training_args):
+    def __init__(self, name, model_name, model_config, dataset_name, training_args):
         self.name = name
         self.model_name = model_name
+        self.model_config = model_config
         self.dataset_name = dataset_name
-        self.config = config
         self.training_args = training_args
         self.entries = []
 
@@ -45,24 +45,30 @@ class Logger:
 
     def report_all(self, with_entries=False):
         report = {
+            # model/env config
             "model_name": self.model_name,
             "dataset_name": self.dataset_name,
-            "max_episode_length": self.config.max_ep_len,
-            "context_window_size": self.config.context_size,
-            "returns_scale": self.config.returns_scale,
-            "max_return": self.config.max_return,
-            "init_lambda1": self.config.lambda1,
-            "init_lambda2": self.config.lambda2,
-            "warmup_steps": self.config.warmup_steps,
-            "epochs": self.training_args.num_train_epochs,
+            "returns_scale": self.model_config.returns_scale,
+            "max_episode_length": self.model_config.max_ep_len,
+            "max_obs_length": self.model_config.max_obs_len,
+            "max_episode_return": self.model_config.max_ep_return,
+            "max_obs_return": self.model_config.max_obs_return,
+            # model config
+            "context_window_size": self.model_config.context_size,
+            "init_lambda1": self.model_config.lambda1,
+            "init_lambda2": self.model_config.lambda2,
+            # train config
+            "total_steps": self.training_args.num_train_epochs,
+            "warmup_steps": self.training_args.warmup_steps,
             "batch_size": self.training_args.per_device_train_batch_size,
             "init_learning_rate": self.training_args.learning_rate,
             "weight_decay": self.training_args.weight_decay,
             "adam_beta1": self.training_args.adam_beta1,
             "adam_beta2": self.training_args.adam_beta2,
             "adam_epsilon": self.training_args.adam_epsilon,
-            "warmup_ratio": self.training_args.warmup_ratio,
+            "warmup_steps": self.training_args.warmup_steps,
             "max_grad_norm": self.training_args.max_grad_norm,
+            "dropout": self.training_args.dropout,
         }
 
         if with_entries:

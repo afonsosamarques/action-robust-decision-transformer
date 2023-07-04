@@ -1,0 +1,12 @@
+env_name: "halfcheetah"  # halfcheetah, hopper, walker2d
+
+run_type: "test"  # "core", "pipeline", or "test"
+
+hf_project: "afonsosamarques"  # "afonsosamarques", "ARDT-Project"
+
+trained_model_names: ['dt_halfcheetah-d4rl_expert', 'dt_halfcheetah-rarl_v1']  # names from models stored on the repo
+trained_model_types: ['dt', 'dt']  # dt, ardt_vanilla, ardt_full
+
+is_adv_eval: true  # whether to run adversarial evaluation (sampling different environments only for now)
+eval_target_return: 6000  # note this should depend on environment!! 6k is for halfcheetah for example
+eval_iters: 50  # ensure robust evaluation
