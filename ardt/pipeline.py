@@ -142,8 +142,8 @@ if __name__ == "__main__":
     run_suffix = load_run_suffix(admin_config.run_type)
     
     env_name = load_env_name(env_config.env_name)
-    dataset_path, dataset_name = build_dataset_path(dataset_config, env_name)
-    dataset = load_from_disk(dataset_path)
+    dataset_path, dataset_name = build_dataset_path(dataset_config, env_name, is_local=dataset_config.is_local, hf_project=admin_config.hf_project)
+    dataset = load_from_disk(dataset_path) if dataset_config.is_local else load_dataset(dataset_path)
 
     # retrieving (static) environment parameters
     env_params = {'max_ep_len': env_config.max_ep_len, 'max_ep_return': env_config.max_ep_return, 'returns_scale': env_config.returns_scale}

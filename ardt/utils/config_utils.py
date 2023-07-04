@@ -82,6 +82,7 @@ class EnvironmentConfig(BaseModel):
 
 
 class DatasetConfig(BaseModel):
+    is_local: bool = Field(...)
     online_policy_name : str = Field(...)
     dataset_type: str = Field(...)
     dataset_version: str = Field(...)
@@ -159,8 +160,8 @@ def find_root_dir():
     return root_dir
 
 
-def build_dataset_path(dataset_config, env_name):
-    dataset_dir = find_root_dir() + "/datasets"
+def build_dataset_path(dataset_config, env_name, is_local=True, hf_project="afonsosamarques"):
+    dataset_dir = find_root_dir() + "/datasets" if is_local else f"{hf_project}"
     dataset_path = f"{dataset_dir}/{dataset_config.online_policy_name}_{dataset_config.dataset_type}_{env_name}"
     dataset_path += f"_{dataset_config.dataset_version}" if dataset_config.dataset_version != '' else ''
     return dataset_path, dataset_path.split('/')[-1]
