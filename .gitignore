@@ -1,5 +1,4 @@
 #  Add-hoc gitignore for python project
-dt_halfcheetah-*
 datasets/
 env-sims/
 agents/
@@ -13,7 +12,7 @@ wandb-json/
 access_tokens.py
 pipeline_remote.py
 screenshots/
-steps-ucl-cluster/
+steps-gpus/
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files
