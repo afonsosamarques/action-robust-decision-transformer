@@ -14,7 +14,7 @@ from transformers import DecisionTransformerConfig, Trainer, TrainingArguments
 
 from evaluate_envadv import evaluate
 from model.ardt_utils import DecisionTransformerGymDataCollator
-from utils.config_utils import check_pipelinerun_config, load_run_suffix, load_env_name, load_agent, build_dataset_path, build_model_name
+from utils.config_utils import check_pipelinerun_config, load_run_suffix, load_env_name, load_agent, build_dataset_path, build_model_name, find_root_dir
 from utils.logger import Logger
 
 from access_tokens import HF_WRITE_TOKEN, WANDB_TOKEN
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     parser.add_argument('--config_name', type=str, required=True, help='Name of yaml configuration file to use.')
     args = parser.parse_args()
 
-    with open(f'./run-configs/{args.config_name}.yaml', 'r') as f:
+    with open(f'{find_root_dir()}/run-configs/{args.config_name}.yaml', 'r') as f:
         config = yaml.safe_load(f)
 
     config = check_pipelinerun_config(config)
