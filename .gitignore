@@ -1,19 +1,14 @@
 #  Add-hoc gitignore for python project
 datasets/
-env-sims/
-agents/
-agents-pipeline/
-agents-test/
-eval-outputs/
-eval-outputs-pipeline/
-eval-outputs-test/
+env-sims*/
+agents*/
+eval-outputs*/
 wandb/
 wandb-json/
 access_tokens.py
-pipeline_remote.py
-screenshots/
-steps-gpus/
 private_keys.py
+screenshots/
+info-clusters/
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files

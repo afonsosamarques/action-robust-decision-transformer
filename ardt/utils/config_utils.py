@@ -172,7 +172,7 @@ def find_root_dir():
         root_dir = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).strip().decode('utf-8')
     except Exception as e:
         root_dir = os.getcwd()[:os.getcwd().find('action-robust-decision-transformer')+len('action-robust-decision-transformer')]
-    return root_dir + "/ardt"
+    return root_dir + ('' if root_dir.endswith('action-robust-decision-transformer') else '/action-robust-decision-transformer') + "/ardt"
 
 
 def build_dataset_path(dataset_config, env_name, is_local=True, hf_project="afonsosamarques"):
