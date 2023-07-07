@@ -126,6 +126,7 @@ if __name__ == "__main__":
     # load config
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_name', type=str, required=True, help='Name of yaml configuration file to use.')
+    parser.add_argument('--is_test_run', action='store_false', help='Whether this is a test run. Set if it is, ignore if it is not.')
     args = parser.parse_args()
 
     with open(f'{find_root_dir()}/run-configs/{args.config_name}.yaml', 'r') as f:
@@ -172,7 +173,7 @@ if __name__ == "__main__":
             'lambda2': params_combination[2],
         }
         train_params = {
-            'train_steps': train_steps,
+            'train_steps': train_steps if not args.is_test_run else 10,
             'train_batch_size': train_batch_size,
             'learning_rate': params_combination[3],
             'weight_decay': params_combination[4],
@@ -210,7 +211,7 @@ if __name__ == "__main__":
                 model_path_local=model_path_local,
                 env_name=env_name,
                 env_type=env_config.env_type,
-                eval_iters=eval_config.eval_iters,
+                eval_iters=eval_config.eval_iters if not args.is_test_run else 2,
                 eval_target=eval_config.eval_target_return,
                 is_adv_eval=eval_config.is_adv_eval,
                 hf_project=admin_config.hf_project,

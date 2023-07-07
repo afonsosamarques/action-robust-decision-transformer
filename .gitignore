@@ -13,6 +13,7 @@ access_tokens.py
 pipeline_remote.py
 screenshots/
 steps-gpus/
+private_keys.py
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files
