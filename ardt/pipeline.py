@@ -126,7 +126,7 @@ if __name__ == "__main__":
     # load config
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_name', type=str, required=True, help='Name of yaml configuration file to use.')
-    parser.add_argument('--is_test_run', action='store_false', help='Whether this is a test run. Set if it is, ignore if it is not.')
+    parser.add_argument('--is_test_run', action='store_true', help='Whether this is a test run. Set if it is, ignore if it is not.')
     args = parser.parse_args()
 
     with open(f'{find_root_dir()}/run-configs/{args.config_name}.yaml', 'r') as f:
