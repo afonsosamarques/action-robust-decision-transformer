@@ -1,6 +1,4 @@
 import datetime
-import os
-import subprocess
 
 from dataclasses import dataclass
 from pydantic import BaseModel, Field
@@ -42,7 +40,9 @@ class EvaluationRunConfig(BaseModel):
     run_type: str = Field(...)
     trained_model_names: list[str] = Field(...)
     trained_model_types: list[str] = Field(...)
-    is_adv_eval: bool = Field(...)
+    adv_model_names: list[str] = Field(...)
+    adv_model_types: list[str] = Field(...)
+    eval_type: str = Field(...)
     eval_target_return: int = Field(...)
     eval_iters: int = Field(...)
     hf_project: str = Field(...)
@@ -50,7 +50,11 @@ class EvaluationRunConfig(BaseModel):
 
 def check_evalrun_config(config):
     config = EvaluationRunConfig(**config)
+    assert config.eval_type in ['no_adv', 'env_adv', 'agent_adv'], "Evaluation type needs to be either 'no_adv', 'env_adv' or 'agent_adv'."
     assert len(config.trained_model_names) == len(config.trained_model_types), "There need to be as many model names as model types."
+    if config.eval_type == 'agent_adv':
+        assert len(config.adv_model_names) > 0, "There need to be at least one adversarial model."
+        assert len(config.adv_model_names) == len(config.adv_model_types), "There need to be as many adversarial model names as adversarial model types."
     assert all([mt in ['dt', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full'] for mt in config.trained_model_types]), "Model types need to be either 'dt' or 'ardt-vanilla' or 'ardt-full."
     assert config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
     assert config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
@@ -109,9 +113,11 @@ class TrainingConfig(BaseModel):
 
 class EvaluationConfig(BaseModel):
     is_eval: bool = Field(...)
-    is_adv_eval: bool = Field(...)
+    eval_type: str = Field(...)
     eval_target_return: int = Field(...)
     eval_iters: int = Field(...)
+    adv_model_names: list[str] = Field(...)
+    adv_model_types: list[str] = Field(...)
 
 
 class AdminConfig(BaseModel):
@@ -155,6 +161,11 @@ def check_pipelinerun_config(config):
     assert pipeline_config.admin_config.wandb_project in ['afonsosamarques', 'ARDT-Project'], "Wandb project needs to be either 'afonsosamarques' or 'ARDT-Project'."
     assert pipeline_config.admin_config.hf_project in ['afonsosamarques', 'ARDT-Project'], "Wandb project needs to be either 'afonsosamarques' or 'ARDT-Project'."
     assert pipeline_config.admin_config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
+    if pipeline_config.evaluation_config.is_eval:
+        assert pipeline_config.evaluation_config.eval_type in ['no_adv', 'env_adv', 'agent_adv'], "Evaluation type needs to be either 'no_adv', 'env_adv' or 'agent_adv'."
+        if pipeline_config.evaluation_config.eval_type == 'ardt-agent_adv':
+            assert len(pipeline_config.evaluation_config.adv_model_names) > 0, "There need to be at least one adversarial model."
+            assert len(pipeline_config.evaluation_config.adv_model_names) == len(pipeline_config.evaluation_config.adv_model_types), "There need to be as many adversarial model names as adversarial model types."
     return pipeline_config
 
 

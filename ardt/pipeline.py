@@ -12,7 +12,7 @@ from datasets import load_dataset, load_from_disk
 from huggingface_hub import login
 from transformers import DecisionTransformerConfig, Trainer, TrainingArguments
 
-from evaluate_envadv import evaluate
+from evaluate import launch_evaluation
 from model.ardt_utils import DecisionTransformerGymDataCollator
 from utils.config_utils import check_pipelinerun_config, load_run_suffix, load_env_name, load_agent, build_dataset_path, build_model_name
 from utils.helpers import find_root_dir
@@ -205,20 +205,27 @@ if __name__ == "__main__":
         # evaluate if desired
         if config.evaluation_config.is_eval:
             env_name = load_env_name(env_config.env_type)
-            evaluate(
-                model_name=model_name, 
-                model_type=agent_type,
-                model_path_local=model_path_local,
-                env_name=env_name,
-                env_type=env_config.env_type,
-                eval_iters=eval_config.eval_iters if not args.is_test_run else 2,
-                eval_target=eval_config.eval_target_return,
-                is_adv_eval=eval_config.is_adv_eval,
-                hf_project=admin_config.hf_project,
-                run_suffix=run_suffix,
-                verbose=admin_config.is_verbose,
-                device=device,
-        )
+            adv_model_names = eval_config.adv_model_names if eval_config.eval_type == 'agent_adv' else [None]
+            adv_model_types = eval_config.adv_model_types if eval_config.eval_type == 'agent_adv' else [None]
+
+            for adv_model_name, adv_model_type in zip(adv_model_names, adv_model_types):
+                # irrelevant loop if no explicit adversaries, otherwise runs through list of adversaries
+                launch_evaluation(
+                    eval_type=eval_config.eval_type,
+                    model_name=model_name, 
+                    model_type=agent_type,
+                    model_path_local=model_path_local,
+                    env_name=env_name,
+                    env_type=env_config.env_type,
+                    eval_iters=eval_config.eval_iters if not args.is_test_run else 2,
+                    eval_target=eval_config.eval_target_return,
+                    adv_model_name=adv_model_name,
+                    adv_model_type=adv_model_type,
+                    hf_project=admin_config.hf_project,
+                    run_suffix=run_suffix,
+                    verbose=admin_config.is_verbose,
+                    device=device,
+                )
 
     print("\n========================================================================================================================")
     print("Done. \n")

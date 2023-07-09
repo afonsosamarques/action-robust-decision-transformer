@@ -26,7 +26,7 @@ training_config:
 
 evaluation_config:
   is_eval: true  # whether to run evaluation
-  is_adv_eval: true  # whether to run adversarial evaluation (sampling different environments only for now)
+  eval_type: "env_adv"  # no_adv, env_adv, agent_adv
   eval_target_return: 12000  # note this should depend on environment!! 12k/6k for halfcheetah for example
   eval_iters: 20  # just enough to get some CLT going
 

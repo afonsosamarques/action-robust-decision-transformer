@@ -70,4 +70,4 @@ class TrainableDT(DecisionTransformerModel):
             return_dict=False,
         )
 
-        return action_preds[0, -1]
+        return action_preds[0, -1], action_preds[0, -1] * 0.0
