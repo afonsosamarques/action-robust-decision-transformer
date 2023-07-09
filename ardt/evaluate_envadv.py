@@ -13,7 +13,7 @@ from requests.exceptions import HTTPError
 from huggingface_hub import login
 
 from utils.config_utils import check_evalrun_config, load_run_suffix, load_env_name, load_model
-from utils.helpers import set_seed_everywhere
+from utils.helpers import set_seed_everywhere, find_root_dir
 
 from access_tokens import HF_WRITE_TOKEN
 
@@ -200,7 +200,7 @@ def evaluate(
         scrappy_print_eval_dict(model_name, eval_dict)
 
     # save eval_dict as json
-    with open(f'./eval-outputs{run_suffix}/{model_name}.json', 'w') as f:
+    with open(f'{find_root_dir()}/eval-outputs{run_suffix}/{model_name}.json', 'w') as f:
         json.dump(eval_dict, f)
 
     # cleanup admin

@@ -10,6 +10,8 @@ from model.ardt_vanilla import SingleAgentRobustDT
 from model.ardt_full import TwoAgentRobustDT
 from model.trainable_dt import TrainableDT
 
+from utils.helpers import find_root_dir
+
 
 ############################ Common ############################
 def load_run_suffix(run_type):
@@ -167,14 +169,6 @@ def load_agent(agent_type):
         raise Exception(f"Agent type {agent_type} not available.")
 
 
-def find_root_dir():
-    try:
-        root_dir = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).strip().decode('utf-8')
-    except Exception as e:
-        root_dir = os.getcwd()[:os.getcwd().find('action-robust-decision-transformer')+len('action-robust-decision-transformer')]
-    return root_dir + ('' if root_dir.endswith('action-robust-decision-transformer') else '/action-robust-decision-transformer') + "/ardt"
-
-
 def build_dataset_path(dataset_config, env_name, is_local=True, hf_project="afonsosamarques"):
     dataset_dir = find_root_dir() + "/datasets" if is_local else f"{hf_project}"
     dataset_path = f"{dataset_dir}/{dataset_config.online_policy_name}_{dataset_config.dataset_type}_{env_name}"
@@ -183,5 +177,5 @@ def build_dataset_path(dataset_config, env_name, is_local=True, hf_project="afon
 
 
 def build_model_name(model_type, env_type, dataset_name):
-    datetime_encoding = datetime.datetime.now().strftime("%d%m-%H%M")
+    datetime_encoding = datetime.datetime.now().strftime("%d%m_%H%M")
     return f"{model_type}-{env_type}-{dataset_name}-{datetime_encoding}"

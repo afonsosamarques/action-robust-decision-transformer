@@ -10,7 +10,7 @@ from requests.exceptions import HTTPError
 from huggingface_hub import login
 
 from utils.config_utils import check_evalrun_config, load_run_suffix, load_env_name, load_model
-from utils.helpers import set_seed_everywhere
+from utils.helpers import set_seed_everywhere, find_root_dir
 
 from access_tokens import HF_WRITE_TOKEN
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
     # load and check config
-    with open('./run-configs/evaluation.yaml', 'r') as f:
+    with open(f'{find_root_dir()}/run-configs/evaluation.yaml', 'r') as f:
         config = yaml.safe_load(f)
     config = check_evalrun_config(config)
 

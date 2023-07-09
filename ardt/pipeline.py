@@ -14,7 +14,8 @@ from transformers import DecisionTransformerConfig, Trainer, TrainingArguments
 
 from evaluate_envadv import evaluate
 from model.ardt_utils import DecisionTransformerGymDataCollator
-from utils.config_utils import check_pipelinerun_config, load_run_suffix, load_env_name, load_agent, build_dataset_path, build_model_name, find_root_dir
+from utils.config_utils import check_pipelinerun_config, load_run_suffix, load_env_name, load_agent, build_dataset_path, build_model_name
+from utils.helpers import find_root_dir
 from utils.logger import Logger
 
 from access_tokens import HF_WRITE_TOKEN, WANDB_TOKEN
@@ -36,7 +37,6 @@ def train(
     print("============================================================================================================")
     print(f"\nTraining {model_name} on dataset {dataset_name} on device {device}. Starting at {datetime.datetime.now()}.\n")
     print("================================================")
-    wandb.init()
 
     # here we define the data treatment
     collator = DecisionTransformerGymDataCollator(
@@ -69,7 +69,7 @@ def train(
 
     # here we define the training protocol
     training_args = TrainingArguments(
-        output_dir=f"./agents{run_suffix}/" + model_name,
+        output_dir=f"{find_root_dir()}/agents{run_suffix}/" + model_name,
         remove_unused_columns=False,
         max_steps=train_params['train_steps'],
         per_device_train_batch_size=train_params['train_batch_size'],
@@ -111,7 +111,7 @@ def train(
 
     print(f"\n\nExiting at {datetime.datetime.now()}.\n")
     print("================================================\n")
-    return f"./agents{run_suffix}/" + model_name
+    return f"{find_root_dir()}/agents{run_suffix}/" + model_name
 
 
 if __name__ == "__main__":

@@ -18,8 +18,4 @@ module load python/3.9.10
 source ardt-env/ardt/bin/activate
 
 nvidia-smi
-mkdir agents-pipeline/
-mkdir eval-outputs-pipeline/
-mkdir agents-test/
-mkdir eval-outputs-test/
 python3 action-robust-decision-transformer/ardt/pipeline.py --config_name ardt_vanilla-halfcheetah-rarl_train_v1

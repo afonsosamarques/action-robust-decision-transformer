@@ -5,6 +5,8 @@ import numpy as np
 import torch
 import wandb
 
+from utils.helpers import find_root_dir
+
 
 class Logger:
     def __init__(self, name, model_name, model_config, dataset_name, training_args):
@@ -73,7 +75,7 @@ class Logger:
         if with_entries:
             report['entries'] = self.entries
 
-        with open(f'./wandb-json/{self.name}.json', 'w') as f:
+        with open(f'{find_root_dir()}/wandb-json/{self.name}.json', 'w') as f:
             json.dump(report, f, indent=4)
 
         return report
