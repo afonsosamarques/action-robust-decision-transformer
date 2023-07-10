@@ -29,6 +29,9 @@ evaluation_config:
   eval_type: "env_adv"  # no_adv, env_adv, agent_adv
   eval_target_return: 12000  # note this should depend on environment!! 12k/6k for halfcheetah for example
   eval_iters: 20  # just enough to get some CLT going
+  # only if using an explicit adversary!! i.e. eval_type = "agent_adv"
+  adv_model_names: []  # names from models stored on the repo
+  adv_model_types: []  # dt, ardt-vanilla, ardt-full
 
 admin_config:
   wandb_project: "ARDT-Project"  # "afonsosamarques", "ARDT-Project"

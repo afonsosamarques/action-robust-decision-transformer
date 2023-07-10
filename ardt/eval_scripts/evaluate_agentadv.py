@@ -1,4 +1,5 @@
 import json
+import os
 
 import gymnasium as gym
 import numpy as np
@@ -28,13 +29,13 @@ def evaluate(
     ):
     # load models
     try:
-        pr_model, _ = load_model(pr_model_type, pr_model_name, hf_project=hf_project, model_path_local=model_path_local)
+        pr_model, is_adv_pr_model = load_model(pr_model_type, pr_model_name, hf_project=hf_project, model_path_local=model_path_local)
     except HTTPError as e:
         print(f"Could not load protagonist model {pr_model_name} from repo.")
     pr_model.to(device)
 
     try:
-        adv_model, _ = load_model(adv_model_type, adv_model_name, hf_project=hf_project, model_path_local=model_path_local)
+        adv_model, _ = load_model(adv_model_type, adv_model_name, hf_project=hf_project)
     except HTTPError as e:
         print(f"Could not load protagonist model {adv_model_name} from repo.")
     adv_model.to(device)
@@ -64,7 +65,10 @@ def evaluate(
                 adv_act_dim = adv_model.config.adv_act_dim
             else:
                 # for now we just assume it's the same as that of the protagonist model
-                adv_act_dim = pr_model.config.pr_act_dim
+                if is_adv_pr_model:
+                    adv_act_dim = pr_model.config.adv_act_dim
+                else:
+                    adv_act_dim = pr_model.config.pr_act_dim
             
             # reset environment
             state, _ = env.reset()
@@ -108,13 +112,6 @@ def evaluate(
                 )
                 adv_actions[-1] = adv_action
 
-                # # FIXME from rllab
-                # class temp_action(object): pro=None; adv=None;
-                # cum_a = temp_action()
-                # cum_a.pro = pr_action.detach().cpu().numpy()
-                # cum_a.adv = adv_action.detach().cpu().numpy()
-                # state, reward, done, _ = env.step(cum_a)
-
                 # FIXME for now we will just sum the two actions... (assuming same action space)
                 cumul_action = (pr_action + adv_action).detach().cpu().numpy()
                 state, reward, done, _, _ = env.step(cumul_action)
@@ -146,5 +143,8 @@ def evaluate(
         scrappy_print_eval_dict(pr_model_name, eval_dict, other_model_name=adv_model_name)
 
     # save eval_dict as json
-    with open(f'{find_root_dir()}/eval-outputs{run_suffix}/{pr_model_name}/{adv_model_name}.json', 'w') as f:
+    dir_path = f'{find_root_dir()}/eval-outputs{run_suffix}/{pr_model_name}'
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    with open(f'{dir_path}/{adv_model_name}.json', 'w') as f:
         json.dump(eval_dict, f)

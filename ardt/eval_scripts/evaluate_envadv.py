@@ -1,4 +1,5 @@
 import json
+import os
 
 import gymnasium as gym
 import numpy as np
@@ -83,7 +84,7 @@ def evaluate(
                     env = sample_env_params(env)
                     print("Checking that sampling worked. Gravity: ", env.model.opt.gravity)
 
-                # set up whether there is an adversary also being modelled
+                # set up whether the model also models an adversary; if not adv_act_dim will not be available
                 if is_adv_model:
                     adv_act_dim = model.config.adv_act_dim
                 else:
@@ -173,7 +174,10 @@ def evaluate(
         scrappy_print_eval_dict(model_name, eval_dict)
 
     # save eval_dict as json
-    with open(f'{find_root_dir()}/eval-outputs{run_suffix}/{model_name}.json', 'w') as f:
+    dir_path = f'{find_root_dir()}/eval-outputs{run_suffix}/'
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    with open(f'{dir_path}/{model_name}.json', 'w') as f:
         json.dump(eval_dict, f)
 
     # cleanup admin

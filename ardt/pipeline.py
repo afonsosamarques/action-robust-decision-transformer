@@ -212,8 +212,8 @@ if __name__ == "__main__":
                 # irrelevant loop if no explicit adversaries, otherwise runs through list of adversaries
                 launch_evaluation(
                     eval_type=eval_config.eval_type,
-                    model_name=model_name, 
-                    model_type=agent_type,
+                    pr_model_name=model_name, 
+                    pr_model_type=agent_type,
                     model_path_local=model_path_local,
                     env_name=env_name,
                     env_type=env_config.env_type,

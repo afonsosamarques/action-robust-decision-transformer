@@ -136,7 +136,7 @@ class AdversarialDT(DecisionTransformerModel):
                     "rtg_preds": rtg_dist.rsample()}
         else:
             # return predictions
-            rtg_pred_scaled = rtg_dist.mean * (self.config.max_ep_return * 2) - self.config.max_return
+            rtg_pred_scaled = rtg_dist.mean * (self.config.max_ep_return * 2) - self.config.max_ep_return
             if not return_dict:
                 return (rtg_pred_scaled, adv_action_preds)
 
