@@ -1,10 +1,10 @@
 #!/bin/bash -l
 
-#$ -N FirstRealLongIterativeRun
-#$ -l gpu=2
-#$ -l mem=8G
+#$ -N ardt_simplest-halfcheetah-rarl_train_v2-envadv
+#$ -l gpu=1
+#$ -l mem=4G
 #$ -l tmpfs=2G
-#$ -l h_rt=46:00:00
+#$ -l h_rt=6:00:00
 
 #$ -wd /home/ucabscm
 
@@ -18,4 +18,4 @@ module load python/3.9.10
 source ardt-env/ardt/bin/activate
 
 nvidia-smi
-python3 action-robust-decision-transformer/ardt/pipeline.py --config_name ardt_vanilla-halfcheetah-rarl_train_v1
+python3 action-robust-decision-transformer/ardt/pipeline.py --config_name ardt_simplest-halfcheetah-rarl_train_v2-envadv
