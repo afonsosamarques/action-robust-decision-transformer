@@ -99,7 +99,6 @@ def evaluate(
                     timesteps,
                     device,
                 )
-                pr_actions[-1] = pr_action
 
                 _, adv_action = adv_model.get_action(
                     states,
@@ -110,6 +109,9 @@ def evaluate(
                     timesteps,
                     device,
                 )
+
+                # only update the actions upon receiving both predictions
+                pr_actions[-1] = pr_action
                 adv_actions[-1] = adv_action
 
                 # FIXME for now we will just sum the two actions... (assuming same action space)

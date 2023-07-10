@@ -86,7 +86,7 @@ def train(
         weight_decay=train_params['weight_decay'],
         warmup_steps=train_params['warmup_steps'],
         max_grad_norm=train_params['max_grad_norm'],
-        dataloader_num_workers=min(4, (1 if os.cpu_count() is None else os.cpu_count()) // 2),
+        # FIXME causes issues dataloader_num_workers=min(4, (1 if os.cpu_count() is None else os.cpu_count()) // 2),
         use_mps_device=(True if torch.backends.mps.is_available() else False),
         logging_steps=train_params['warmup_steps'],
         log_level="info",
