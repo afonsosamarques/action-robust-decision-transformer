@@ -2,7 +2,7 @@ environment_config:
   env_type: "halfcheetah"  # halfcheetah, hopper, walker2d
   max_ep_len: 1000  # limit episode length for offline dataset
   returns_scale: 1000  # scale returns, 1000 to match original DT implementation
-  max_ep_return: 15000  # max "possible" returns per episode of max len
+  max_ep_return: 12000  # max "possible" returns per episode of max len
 
 dataset_config:
   is_local: true  # true, false, whether it is stored locally or up on HF

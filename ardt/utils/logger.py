@@ -45,7 +45,7 @@ class Logger:
             assert step is not None
             _log_wandb(step, log_entry)
 
-    def report_all(self, with_entries=False):
+    def report_all(self, save=True, with_entries=False):
         report = {
             # model/env config
             "model_name": self.model_name,
@@ -75,7 +75,8 @@ class Logger:
         if with_entries:
             report['entries'] = self.entries
 
-        with open(f'{find_root_dir()}/wandb-json/{self.name}.json', 'w') as f:
-            json.dump(report, f, indent=4)
-
-        return report
+        if save:
+            with open(f'{find_root_dir()}/wandb-json/{self.name}.json', 'w') as f:
+                json.dump(report, f, indent=4)
+        else:
+            return report

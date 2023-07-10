@@ -68,6 +68,14 @@ def train(
     )
 
     # here we define the training protocol
+    wandb.init(
+        project=wandb_project,
+        name=model_name,
+        id=model_name,
+        tags=[model_name, dataset_name, env_params['env_name'], run_suffix],
+        dir=f"{find_root_dir()}",
+    )
+
     training_args = TrainingArguments(
         output_dir=f"{find_root_dir()}/agents{run_suffix}/" + model_name,
         remove_unused_columns=False,
@@ -107,6 +115,7 @@ def train(
     trainer.train()
     trainer.save_model()
     logger.report_all()
+    wandb.config.update(logger.report_all(save=False))
     wandb.finish()
 
     print(f"\n\nExiting at {datetime.datetime.now()}.\n")
@@ -141,14 +150,18 @@ if __name__ == "__main__":
     admin_config = config.admin_config
 
     # unwrapping some of the configs for admin purposes
-    os.environ["WANDB_PROJECT"] = admin_config.wandb_project
     run_suffix = load_run_suffix(admin_config.run_type)
     
     dataset_path, dataset_name = build_dataset_path(dataset_config, env_config.env_type, is_local=dataset_config.is_local, hf_project=admin_config.hf_project)
     dataset = load_from_disk(dataset_path) if dataset_config.is_local else load_dataset(dataset_path)
 
     # retrieving (static) environment parameters
-    env_params = {'max_ep_len': env_config.max_ep_len, 'max_ep_return': env_config.max_ep_return, 'returns_scale': env_config.returns_scale}
+    env_params = {
+        'env_name': load_env_name(env_config.env_type),
+        'max_ep_len': env_config.max_ep_len, 
+        'max_ep_return': env_config.max_ep_return, 
+        'returns_scale': env_config.returns_scale
+    }
 
     # set up model/train parameter combinations
     context_size = model_config.context_size  # to iterate over
