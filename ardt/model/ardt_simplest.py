@@ -4,10 +4,9 @@ import torch
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
 from .ardt_utils import DecisionTransformerOutput
-from .ardt_utils import StdSquashFunc, ExpFunc
 
 
-class SingleAgentRobustDT(DecisionTransformerModel):
+class SimpleRobustDT(DecisionTransformerModel):
     def __init__(self, config, logger=None):
         super().__init__(config)
         self.config = config
@@ -25,11 +24,8 @@ class SingleAgentRobustDT(DecisionTransformerModel):
         self.embed_adv_action = torch.nn.Linear(config.adv_act_dim, config.hidden_size)
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
-        self.predict_mu = torch.nn.Sequential(
+        self.predict_pr_action = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()] if config.action_tanh else []))
-        )
-        self.predict_sigma = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdSquashFunc()] + [ExpFunc()])  # keeping it to diag matrix for now
         )
         self.predict_adv_action = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()] if config.action_tanh else []))
@@ -110,42 +106,29 @@ class SingleAgentRobustDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        mu_preds = self.predict_mu(x[:, 1])  # predict next pr action dist. mean given return and state
-        sigma_preds = self.predict_sigma(x[:, 1])  # predict next pr action dist. sigma given return and state
-        pr_action_dist = torch.distributions.Normal(mu_preds, sigma_preds)
-        
+        pr_action_preds = self.predict_pr_action(x[:, 1])  # predict next pr action given return and state
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next adv action given return, state and pr_action
 
         if is_train:
             self.step += 1
 
             # return loss
-            pr_action_log_prob = -pr_action_dist.log_prob(pr_actions).sum(axis=2)[attention_mask > 0].mean()
-            pr_action_entropy = -pr_action_dist.entropy().mean()
-            pr_action_loss = pr_action_log_prob + self.config.lambda1 * pr_action_entropy
+            pr_action_preds = pr_action_preds.reshape(-1, self.config.pr_act_dim)[attention_mask.reshape(-1) > 0]
+            pr_action_targets = pr_actions.reshape(-1, self.config.pr_act_dim)[attention_mask.reshape(-1) > 0]
+            pr_action_loss = torch.mean((pr_action_preds - pr_action_targets) ** 2)
 
-            pred_adv = pred_adv if pred_adv is not None else (self.step > self.config.warmup_steps)
-            adv_action_loss = torch.tensor(0)
-            if pred_adv:
-                adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
-                adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
-                adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
-
-            dist_params = {}
-            for i in range(sigma_preds.shape[2]):
-                dist_params[f"mu_{i}"] =  torch.mean(mu_preds[:, :, i]).item()
-                dist_params[f"sigma_{i}"] =  torch.mean(sigma_preds[:, :, i]).item()
+            adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
+            adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
+            adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
             if self.logger is not None:
                 self.logger.add_entry(
                     step=self.step,
-                    hyperparams={"lambda1": self.config.lambda1, "lambda2": self.config.lambda2},
+                    hyperparams={"lambda2": self.config.lambda2},
                     tr_losses={"loss": (pr_action_loss + adv_action_loss).item(), 
                                "pr_action_loss": pr_action_loss.item(), 
-                               "pr_action_log_prob": pr_action_log_prob.item(), 
-                               "pr_action_entropy": pr_action_entropy.item(), 
                                "adv_action_loss": adv_action_loss.item()},
-                    dist_params=dist_params,
+                    dist_params=None,
                     log=True
                 )
 
@@ -153,10 +136,10 @@ class SingleAgentRobustDT(DecisionTransformerModel):
         else:
             # return predictions
             if not return_dict:
-                return (pr_action_dist.mean, adv_action_preds)
+                return (pr_action_preds, adv_action_preds)
 
             return DecisionTransformerOutput(
-                pr_action_preds=pr_action_dist.mean,
+                pr_action_preds=pr_action_preds,
                 adv_action_preds=adv_action_preds,
                 # hidden_states=encoder_outputs.hidden_states,
                 # last_hidden_state=encoder_outputs.last_hidden_state,

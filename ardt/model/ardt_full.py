@@ -242,8 +242,7 @@ class StochasticDT(DecisionTransformerModel):
         # return (0), states (1) or pr_actions (2); i.e. x[:,1,t] is the token for s_t
         x = x.reshape(batch_size, seq_length, 3, self.hidden_size).permute(0, 2, 1, 3)
 
-        # get predictions
-        # FIXME check indexing, this seems off  
+        # get predictions 
         mu_preds = self.predict_mu(x[:, 1])  # predict next action dist. mean given returns and states
         sigma_preds = self.predict_sigma(x[:, 1])  # predict next action dist. sigma given returns and states
         pr_action_dist = torch.distributions.Normal(mu_preds, sigma_preds)

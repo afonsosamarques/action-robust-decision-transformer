@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel, Field
 from transformers import DecisionTransformerConfig
 
+from model.ardt_simplest import SimpleRobustDT
 from model.ardt_vanilla import SingleAgentRobustDT
 from model.ardt_full import TwoAgentRobustDT
 from model.trainable_dt import TrainableDT
@@ -55,7 +56,7 @@ def check_evalrun_config(config):
     if config.eval_type == 'agent_adv':
         assert len(config.adv_model_names) > 0, "There need to be at least one adversarial model."
         assert len(config.adv_model_names) == len(config.adv_model_types), "There need to be as many adversarial model names as adversarial model types."
-    assert all([mt in ['dt', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full'] for mt in config.trained_model_types]), "Model types need to be either 'dt' or 'ardt-vanilla' or 'ardt-full."
+    assert all([mt in ['dt', 'ardt-simplest', 'ardt_simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full'] for mt in config.trained_model_types]), "Model types need to be either 'dt' or 'ardt-vanilla' or 'ardt-full."
     assert config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
     assert config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
     assert config.hf_project in ['afonsosamarques', 'ARDT-Project'], "HF project needs to be either 'afonsosamarques' or 'ARDT-Project'."
@@ -68,6 +69,10 @@ def load_model(model_type, model_to_use, hf_project="afonsosamarques", model_pat
         config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
         model = TrainableDT(config)
         return model.from_pretrained(model_path, use_auth_token=True), False
+    elif model_type == "ardt-simplest":
+        config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
+        model = SimpleRobustDT(config)
+        return model.from_pretrained(model_path, use_auth_token=True), True
     elif model_type == "ardt-vanilla":
         config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
         model = SingleAgentRobustDT(config)
@@ -157,7 +162,7 @@ def check_pipelinerun_config(config):
     assert pipeline_config.environment_config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
     assert pipeline_config.dataset_config.online_policy_name in ['d4rl', 'rarl'], "Online policy needs to be either 'd4rl' or 'rarl'."
     assert pipeline_config.dataset_config.dataset_type in ['train', 'test', 'expert'], "Dataset type needs to be either 'train' or 'test' or 'expert'."
-    assert pipeline_config.model_config.agent_type in ['dt', 'ardt-vanilla', 'ardt-full']
+    assert pipeline_config.model_config.agent_type in ['dt', 'ardt-simplest', 'ardt-vanilla', 'ardt-full']
     assert pipeline_config.admin_config.wandb_project in ['afonsosamarques', 'ARDT-Project'], "Wandb project needs to be either 'afonsosamarques' or 'ARDT-Project'."
     assert pipeline_config.admin_config.hf_project in ['afonsosamarques', 'ARDT-Project'], "Wandb project needs to be either 'afonsosamarques' or 'ARDT-Project'."
     assert pipeline_config.admin_config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
@@ -172,6 +177,8 @@ def check_pipelinerun_config(config):
 def load_agent(agent_type):
     if agent_type == "dt":
         return TrainableDT
+    elif agent_type == "ardt-simplest" or agent_type == "ardt_simplest":
+        return SimpleRobustDT
     elif agent_type == "ardt-vanilla" or agent_type == "ardt_vanilla":
         return SingleAgentRobustDT
     elif agent_type == "ardt-full" or agent_type == "ardt_full":

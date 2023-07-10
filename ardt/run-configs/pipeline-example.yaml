@@ -11,7 +11,7 @@ dataset_config:
   dataset_version: ""  # fill only if there is any type of versioning to the dataset being considered, otherwise leave blank
 
 model_config:
-  agent_type: "ardt-vanilla"  # dt, ardt-vanilla, ardt-full
+  agent_type: "ardt-vanilla"  # dt, ardt-simplest, ardt-vanilla, ardt-full
   context_size: [20]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
   lambda1: [0.01]  # these are for different parameter combinations to try!!
   lambda2: [7.0]  # these are for different parameter combinations to try!
@@ -31,7 +31,7 @@ evaluation_config:
   eval_iters: 2  # just enough to get some CLT going
   # only if using an explicit adversary!! i.e. eval_type = "agent_adv"
   adv_model_names: ['ardt_vanilla_halfcheetah-d4rl_expert', 'ardt_full_halfcheetah-d4rl_expert']  # names from models stored on the repo
-  adv_model_types: ['ardt-vanilla', 'ardt-full']  # dt, ardt-vanilla, ardt-full
+  adv_model_types: ['ardt-vanilla', 'ardt-full']  # dt, ardt-simplest, ardt-vanilla, ardt-full
 
 admin_config:
   wandb_project: "ARDT-Project"  # "afonsosamarques", "ARDT-Project"
