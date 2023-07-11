@@ -4,9 +4,12 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 from network import Critic, Actor
 import os
+import random
 import numpy as np
 from utils import RunningMeanStd
 from replay_memory import ReplayMemory, Transition
+
+from evaluation_protocol.eval_utils import EvalWrapper
 
 
 def soft_update(target, source, tau):
@@ -53,7 +56,7 @@ class DDPG:
 
         self.alpha = alpha
         self.train_mode = train_mode
-
+    
         self.num_inputs = num_inputs
         self.action_space = action_space
         self.critic_l2_reg = critic_l2_reg
@@ -101,6 +104,7 @@ class DDPG:
         self.adversary.eval()
         if self.train_mode:
             self.critic.eval()
+        return DDPGEvalWrapper(self)
 
     def train(self):
         self.actor.train()
@@ -357,3 +361,14 @@ class DDPG:
                 pass
             param = params[name]
             param += torch.randn(param.shape).to(self.device) * param_noise.current_stddev
+
+
+class DDPGEvalWrapper(EvalWrapper):
+    def __init__(self, model, mdp_type, **kwargs):
+        super().__init__(model)
+        assert self.mdp_type in ['pr_mdp', 'nr_mdp']
+        self.mdp_type = mdp_type
+    
+    def get_action(self, state):
+        action, pr_action, adv_action = self.model.select_action(state, mdp_type=self.mdp_type)
+        return pr_action, adv_action

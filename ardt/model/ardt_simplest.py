@@ -3,7 +3,7 @@ import torch
 
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
-from .ardt_utils import DecisionTransformerOutput
+from .ardt_utils import DecisionTransformerOutput, DTEvalWrapper
 
 
 class SimpleRobustDT(DecisionTransformerModel):
@@ -145,6 +145,9 @@ class SimpleRobustDT(DecisionTransformerModel):
                 # last_hidden_state=encoder_outputs.last_hidden_state,
                 # attentions=encoder_outputs.attentions,
             )
+        
+    def eval(self):
+        return DTEvalWrapper(self)
     
     def get_action(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device):
         # NOTE this implementation does not condition on past rewards

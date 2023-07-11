@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 
-def save_model(actor, adversary, obs_rms, rew_rms, basedir=None):
+def save_model(agent, actor, adversary, obs_rms, rew_rms, basedir=None):
     if not os.path.exists('models/'):
         os.makedirs('models/')
 
@@ -15,7 +15,8 @@ def save_model(actor, adversary, obs_rms, rew_rms, basedir=None):
     torch.save(actor.state_dict(), actor_path)
     torch.save(adversary.state_dict(), adversary_path)
 
-    var_dict = {'obs_rms_mean': None, 'obs_rms_var': None, 'rew_rms_mean': None, 'rew_rms_var': None}
+    var_dict = {'obs_rms_mean': None, 'obs_rms_var': None, 'rew_rms_mean': None, 'rew_rms_var': None, 
+                'hidden_size': actor.hidden_size, 'num_inputs': agent.num_inputs, 'adversary_action_space': agent.action_space, 'gamma': agent.gamma, 'tau': agent.tau}
     if obs_rms is not None:
         var_dict['obs_rms_mean'] = obs_rms.mean
         var_dict['obs_rms_var'] = obs_rms.var
