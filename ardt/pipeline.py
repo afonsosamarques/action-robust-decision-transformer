@@ -52,6 +52,7 @@ def train(
     # here we store both environment and model parameters
     model_config = DecisionTransformerConfig(
         state_dim=collator.state_dim, 
+        act_dim=collator.pr_act_dim,  # hack to enable training of regular DT
         pr_act_dim=collator.pr_act_dim,
         adv_act_dim=collator.adv_act_dim,
         state_mean=list(collator.state_mean),
@@ -88,7 +89,7 @@ def train(
         max_grad_norm=train_params['max_grad_norm'],
         # FIXME causes issues dataloader_num_workers=min(4, (1 if os.cpu_count() is None else os.cpu_count()) // 2),
         use_mps_device=(True if torch.backends.mps.is_available() else False),
-        logging_steps=train_params['warmup_steps'],
+        logging_steps=(train_params['warmup_steps'] if train_params['warmup_steps'] > 0 else train_params['train_steps'] // 5),
         log_level="info",
         report_to="wandb",
         run_name=model_name,
@@ -166,14 +167,20 @@ if __name__ == "__main__":
     # set up model/train parameter combinations
     context_size = model_config.context_size  # to iterate over
     l1 = model_config.lambda1  # to iterate over
+    if len(l1) == 0: l1 = [1.0]
     l2 = model_config.lambda2  # to iterate over
+    if len(l2) == 0: l2 = [1.0]
 
     train_steps = 10**train_config.train_steps
     train_batch_size = train_config.train_batch_size
     learning_rate = [10**i for i in train_config.learning_rate]  # to iterate over
+    if len(learning_rate) == 0: learning_rate = [1e-4]
     weight_decay = [10**i for i in train_config.weight_decay]  # to iterate over
+    if len(weight_decay) == 0: weight_decay = [1e-4]
     max_grad_norm = train_config.max_grad_norm  # to iterate over
+    if len(max_grad_norm) == 0: max_grad_norm = [0.25]
     warmup_steps = [10**i for i in train_config.warmup_steps]  # to iterate over
+    if len(warmup_steps) == 0: warmup_steps = [0]
 
     params = [context_size, l1, l2, learning_rate, weight_decay, max_grad_norm, warmup_steps]
     params_combinations = list(itertools.product(*params))

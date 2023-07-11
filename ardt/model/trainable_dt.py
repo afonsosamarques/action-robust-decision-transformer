@@ -10,14 +10,21 @@ from transformers import DecisionTransformerConfig, DecisionTransformerModel, Tr
 
 
 class TrainableDT(DecisionTransformerModel):
-    def __init__(self, config):
+    def __init__(self, config, logger):
         super().__init__(config)
+        self.logger = logger
+        self.step = 0
 
     def forward(self, **kwargs):
-        output = super().forward(**kwargs)
+        new_kwargs = kwargs.copy()
+        if "pr_actions" in new_kwargs:
+            # change to be able to utilise the default code
+            new_kwargs["actions"] = new_kwargs.pop("pr_actions")
+            new_kwargs.pop("adv_actions")
+        output = super().forward(**new_kwargs)
 
         # add the DT loss; applied only to non-padding values in action head
-        action_targets = kwargs["actions"]
+        action_targets = kwargs["pr_actions"]
         attention_mask = kwargs["attention_mask"]
         action_preds = output[1]
         act_dim = action_preds.shape[2]
@@ -25,10 +32,27 @@ class TrainableDT(DecisionTransformerModel):
         action_preds = action_preds.reshape(-1, act_dim)[attention_mask.reshape(-1) > 0]
         action_targets = action_targets.reshape(-1, act_dim)[attention_mask.reshape(-1) > 0]
 
-        return {"loss": torch.mean((action_preds - action_targets) ** 2)}
+        self.step += 1
+        loss = torch.mean((action_preds - action_targets) ** 2)
+
+        if self.logger is not None:
+            self.logger.add_entry(
+                step=self.step,
+                hyperparams=None,
+                tr_losses={"loss": loss},
+                dist_params=None,
+                log=True
+            )
+
+        return {"loss": loss}
 
     def original_forward(self, **kwargs):
-        return super().forward(**kwargs)
+        new_kwargs = kwargs.copy()
+        if "pr_actions" in new_kwargs:
+            # change to be able to utilise the default code
+            new_kwargs["actions"] = new_kwargs.pop("pr_actions")
+            new_kwargs.pop("adv_actions")
+        return super().forward(**new_kwargs)
     
     def get_action(model, states, actions, rewards, returns_to_go, timesteps, device):
         # NOTE this implementation does not condition on past rewards
