@@ -69,15 +69,15 @@ def load_model(model_type, model_to_use, hf_project="afonsosamarques", model_pat
         config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
         model = TrainableDT(config)
         return model.from_pretrained(model_path, use_auth_token=True), False
-    elif model_type == "ardt-simplest":
+    elif model_type == "ardt-simplest" or model_type == "ardt_simplest":
         config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
         model = SimpleRobustDT(config)
         return model.from_pretrained(model_path, use_auth_token=True), True
-    elif model_type == "ardt-vanilla":
+    elif model_type == "ardt-vanilla" or model_type == "ardt_vanilla":
         config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
         model = SingleAgentRobustDT(config)
         return model.from_pretrained(model_path, use_auth_token=True), True
-    elif model_type == "ardt-full":
+    elif model_type == "ardt-full" or model_type == "ardt_full":
         config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
         model = TwoAgentRobustDT(config)
         return model.from_pretrained(model_path, use_auth_token=True), True
