@@ -44,6 +44,9 @@ class DDPG:
             self.device = torch.device('cuda')
             torch.backends.cudnn.enabled = False
             self.Tensor = torch.cuda.FloatTensor
+        # elif torch.backends.mps.is_available():
+        #     self.device = torch.device('mps')
+        #     self.Tensor = torch.Tensor
         else:
             self.device = torch.device('cpu')
             self.Tensor = torch.FloatTensor
@@ -154,16 +157,16 @@ class DDPG:
                     mu = adv_mu
 
         else:
-            # if param_noise is not None:
-            #     mu = self.actor_perturbed(state)
-            # else:
-            #     mu = self.actor(state)
-            # mu = mu.data
-            # if action_noise is not None:
-            #     mu += self.Tensor(action_noise()).to(self.device)
+            if param_noise is not None:
+                mu = self.actor_perturbed(state)
+            else:
+                mu = self.actor(state)
+            mu = mu.data
+            if action_noise is not None:
+                mu += self.Tensor(action_noise()).to(self.device)
 
-            # mu = mu.clamp(-1, 1)
-            raise Exception('We only care about MDPs for now.')
+            mu = mu.clamp(-1, 1)
+            return mu
 
         return mu, pr_mu, adv_mu
 

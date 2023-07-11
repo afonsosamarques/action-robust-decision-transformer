@@ -9,6 +9,7 @@ wandb-json/
 access_tokens.py
 private_keys.py
 screenshots/
+models/
 info-clusters/
 **/.DS_Store
 

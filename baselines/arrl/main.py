@@ -1,10 +1,11 @@
 import argparse
 import os
-import gym
+import json
+import gymnasium as gym
 import numpy as np
 import pickle
+import subprocess
 from tqdm import trange
-import visdom
 
 import torch
 
@@ -15,6 +16,14 @@ from param_noise import AdaptiveParamNoiseSpec, ddpg_distance_metric
 from utils import save_model, vis_plot
 
 from collections import defaultdict
+
+
+def find_root_dir():
+    try:
+        root_dir = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).strip().decode('utf-8')
+    except Exception as e:
+        root_dir = os.getcwd()[:os.getcwd().find('action-robust-decision-transformer')+len('action-robust-decision-transformer')]
+    return root_dir + ('' if root_dir.endswith('action-robust-decision-transformer') else '/action-robust-decision-transformer') + "/baselines/arrl/"
 
 
 parser = argparse.ArgumentParser()
@@ -72,7 +81,7 @@ value_losses = []
 policy_losses = []
 adversary_losses = []
 
-base_dir = os.getcwd() + '/models/' + args.env_name + '/'
+base_dir = find_root_dir() + '/models/' + args.env_name + '/'
 
 if args.param_noise:
     base_dir += 'param_noise/'
@@ -125,9 +134,8 @@ if args.num_steps is not None:
 else:
     nb_epochs = 500
 
-
-state = agent.Tensor([env.reset()])
-eval_state = agent.Tensor([eval_env.reset()])
+state = agent.Tensor([env.reset()[0]])
+eval_state = agent.Tensor([eval_env.reset()[0]])
 
 eval_reward = 0
 episode_reward = 0
@@ -135,10 +143,10 @@ agent.train()
 
 reset_noise(agent, ounoise, param_noise)
 
-if args.visualize:
-    vis = visdom.Visdom(env=base_dir)
-else:
-    vis = None
+# if args.visualize:
+#     vis = visdom.Visdom(env=base_dir)
+# else:
+vis = None
 
 train_steps = 0
 args.ratio += 1
@@ -151,7 +159,7 @@ for epoch in trange(nb_epochs):
         with torch.no_grad():
             for t_rollout in range(args.num_rollout_steps):
                 action, pr_mu, adv_mu = agent.select_action(state, ounoise, param_noise, mdp_type=args.exploration_method)
-                next_state, reward, done, info = env.step(action.cpu().numpy()[0])
+                next_state, reward, done, trunc, info = env.step(action.cpu().numpy()[0])
 
                 total_steps += 1
                 episode_reward += reward
@@ -163,10 +171,10 @@ for epoch in trange(nb_epochs):
 
                 agent.store_transition(state, action, mask, next_state, reward)
                 if hacky_indict is not None:
-                    hacky_indict['pr_action'] = pr_mu.cpu().numpy()[0]
-                    hacky_indict['adv_action'] = adv_mu.cpu().numpy()[0]
+                    hacky_indict['pr_action'] = pr_mu.cpu().numpy()[0].tolist()
+                    hacky_indict['adv_action'] = adv_mu.cpu().numpy()[0].tolist()
                     hacky_store[ep].append(hacky_indict)
-                hacky_indict = {'reward': reward.cpu().numpy()[0], 'state': state.cpu().numpy()[0], 'done': done, 'info': info} 
+                hacky_indict = {'reward': str(reward.cpu().numpy()[0]), 'state': state.cpu().numpy()[0].tolist(), 'done': done, 'info': info} 
 
                 prev_action = action
 
@@ -186,7 +194,7 @@ for epoch in trange(nb_epochs):
                     # Update param_noise based on distance metric
                     episode_transitions = agent.memory.sample(args.batch_size)
                     states = torch.stack([transition[0] for transition in episode_transitions], 0)
-                    unperturbed_actions, _, _ = agent.select_action(states, None, None)
+                    unperturbed_actions = agent.select_action(states, None, None, mdp_type='mdp')
                     perturbed_actions = torch.stack([transition[1] for transition in episode_transitions], 0)
 
                     ddpg_dist = ddpg_distance_metric(perturbed_actions.cpu().numpy(),
@@ -212,9 +220,9 @@ for epoch in trange(nb_epochs):
             del adversary_losses[:]
         with torch.no_grad():
             for t_rollout in range(args.num_rollout_steps):
-                action, _, _ = agent.select_action(eval_state, mdp_type='mdp')
+                action = agent.select_action(eval_state, mdp_type='mdp')
 
-                next_eval_state, reward, done, _ = eval_env.step(action.cpu().numpy()[0])
+                next_eval_state, reward, done, trunc, info = eval_env.step(action.cpu().numpy()[0])
                 eval_reward += reward
 
                 next_eval_state = agent.Tensor([next_eval_state])
@@ -234,5 +242,8 @@ for epoch in trange(nb_epochs):
 with open(base_dir + '/results', 'wb') as f:
     pickle.dump(results_dict, f)
 save_model(actor=agent.actor, adversary=agent.adversary, basedir=base_dir, obs_rms=agent.obs_rms, rew_rms=agent.ret_rms)
+
+with open(f'{find_root_dir()}/datasets/arrt_raw_dataset-{args.env_name}-v1.json', 'w') as f:
+    json.dump(hacky_store, f, indent=4)
 
 env.close()
