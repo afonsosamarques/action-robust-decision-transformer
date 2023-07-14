@@ -11,6 +11,7 @@ private_keys.py
 screenshots/
 models/
 info-clusters/
+trained-models/
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files

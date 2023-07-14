@@ -146,7 +146,7 @@ class SimpleRobustDT(DecisionTransformerModel):
                 # attentions=encoder_outputs.attentions,
             )
         
-    def eval(self):
+    def eval(self, **kwargs):
         return DTEvalWrapper(self)
     
     def get_action(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device):

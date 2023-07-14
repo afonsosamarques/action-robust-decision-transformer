@@ -55,11 +55,11 @@ def evaluate(
 
     # load model
     try:
-        model, is_adv_model = load_model(model_type, model_name, model_path=model_path if model_path is not None else hf_project + "/")
+        model, is_adv_model = load_model(model_type, model_name, model_path=(model_path if model_path is not None else hf_project + f"/{model_name}"))
     except HTTPError as e:
         print(f"Could not load model {model_name} from repo.")
     model.to(device)
-    model = model.eval()
+    model = model.eval(mdp_type=('pr_mdp' if 'pr_mdp' in model_path else ('nr_mdp' if 'nr_mdp' in model_path else None)))
     
     # evaluation loop
     print("\n================================================")
@@ -91,17 +91,21 @@ def evaluate(
                 
                 # reset environment
                 state, _ = env.reset()
-                model.new_eval(state, eval_target)
+                model.new_eval(start_state=state, eval_target=eval_target)
 
                 # run episode
                 for t in range(env_steps):
-                    pr_action, adv_action = model.get_action(state)
-                    action = pr_action.detach().cpu().numpy()
-                    state, reward, done, _, _ = env.step(action)
+                    pr_action, adv_action = model.get_action(state=state)
+                    state, reward, done, _, _ = env.step(pr_action)
+                    model.update_history(
+                        pr_action=pr_action, 
+                        adv_action=adv_action, 
+                        state=state, 
+                        reward=reward,
+                    )
                     episode_return += reward
                     episode_length += 1
 
-                    # NOTE THIS IS COMMON
                     # finish and log episode
                     if done or t == env_steps - 1:
                         n_runs += 1

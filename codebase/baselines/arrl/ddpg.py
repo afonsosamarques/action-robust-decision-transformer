@@ -10,7 +10,7 @@ from .network import Critic, Actor
 from .utils import RunningMeanStd
 from .replay_memory import ReplayMemory, Transition
 
-from ...evaluation_protocol.eval_utils import EvalWrapper
+from evaluation_protocol.eval_utils import EvalWrapper
 
 
 def soft_update(target, source, tau):
@@ -101,12 +101,12 @@ class DDPG:
 
         self.memory = ReplayMemory(replay_size)
 
-    def eval(self):
+    def eval(self, mdp_type=None, **kwargs):
         self.actor.eval()
         self.adversary.eval()
         if self.train_mode:
             self.critic.eval()
-        return DDPGEvalWrapper(self)
+        return DDPGEvalWrapper(self, mdp_type)
 
     def train(self):
         self.actor.train()
@@ -364,13 +364,17 @@ class DDPG:
             param = params[name]
             param += torch.randn(param.shape).to(self.device) * param_noise.current_stddev
 
+    def to(self, device='cpu'):
+        self.device = device
+
 
 class DDPGEvalWrapper(EvalWrapper):
-    def __init__(self, model, mdp_type, **kwargs):
+    def __init__(self, model, mdp_type=None, **kwargs):
         super().__init__(model)
-        assert self.mdp_type in ['pr_mdp', 'nr_mdp']
+        assert mdp_type in ['pr_mdp', 'nr_mdp'], "Need to specify valid mdp type."
         self.mdp_type = mdp_type
     
     def get_action(self, state):
+        state = self.model.Tensor(state)
         action, pr_action, adv_action = self.model.select_action(state, mdp_type=self.mdp_type)
-        return pr_action, adv_action
+        return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()

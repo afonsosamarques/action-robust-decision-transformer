@@ -3,7 +3,7 @@ import torch
 
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
-from .ardt_utils import DecisionTransformerOutput
+from .ardt_utils import DecisionTransformerOutput, DTEvalWrapper
 from .ardt_utils import StdSquashFunc, ExpFunc
 
 
@@ -163,6 +163,9 @@ class SingleAgentRobustDT(DecisionTransformerModel):
                 # attentions=encoder_outputs.attentions,
             )
     
+    def eval(self, **kwargs):
+        return DTEvalWrapper(self)
+    
     def get_action(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device):
         # NOTE this implementation does not condition on past rewards
         # reshape to model input format
@@ -177,11 +180,11 @@ class SingleAgentRobustDT(DecisionTransformerModel):
         state_std = torch.from_numpy(np.array(self.config.state_std).astype(np.float32)).to(device=device)
 
         # retrieve window of observations based on context length
-        states = states[:, -self.config.context_size :]
-        pr_actions = pr_actions[:, -self.config.context_size :]
-        adv_actions = adv_actions[:, -self.config.context_size :]
-        returns_to_go = returns_to_go[:, -self.config.context_size :]
-        timesteps = timesteps[:, -self.config.context_size :]
+        states = states[:, -self.config.context_size:]
+        pr_actions = pr_actions[:, -self.config.context_size:]
+        adv_actions = adv_actions[:, -self.config.context_size:]
+        returns_to_go = returns_to_go[:, -self.config.context_size:]
+        timesteps = timesteps[:, -self.config.context_size:]
 
         # normalising states
         states = (states - state_mean) / state_std

@@ -5,11 +5,11 @@ import torch
 from pydantic import BaseModel, Field
 from transformers import DecisionTransformerConfig
 
-from ..ardt.model.ardt_simplest import SimpleRobustDT
-from ..ardt.model.ardt_vanilla import SingleAgentRobustDT
-from ..ardt.model.ardt_full import TwoAgentRobustDT
-from ..ardt.model.trainable_dt import TrainableDT
-from ..baselines.arrl.ddpg import DDPG
+from ardt.model.ardt_simplest import SimpleRobustDT
+from ardt.model.ardt_vanilla import SingleAgentRobustDT
+from ardt.model.ardt_full import TwoAgentRobustDT
+from ardt.model.trainable_dt import TrainableDT
+from baselines.arrl.ddpg import DDPG
 
 
 ############################ Common ############################
@@ -37,6 +37,11 @@ def load_env_name(env_type):
 
 def load_ddpg_model(path):
     var_dict = torch.load(f"{path}/ddpg_vars")
+    var_dict['gamma'] = 0.99
+    var_dict['tau'] = 0.01
+    var_dict['hidden_size'] = 64
+    var_dict['num_inputs'] = 17
+    var_dict['action_space'] = 6
     agent = DDPG(gamma=var_dict['gamma'], tau=var_dict['tau'], hidden_size=var_dict['hidden_size'], num_inputs=var_dict['num_inputs'],
                  action_space=var_dict['action_space'], train_mode=False, alpha=0, replay_size=0, normalize_obs=True)
 
@@ -52,7 +57,7 @@ def load_ddpg_model(path):
         agent.obs_rms = None
         agent.normalize_observations = False
 
-    return agent, True
+    return agent
 
 
 def load_model(model_type, model_to_use, model_path):
@@ -92,12 +97,13 @@ class EvaluationRunConfig(BaseModel):
     trained_model_names: list[str] = Field(...)
     trained_model_types: list[str] = Field(...)
     trained_model_paths: list[str] = Field(...)
-    adv_model_names: list[str] = Field(...)
-    adv_model_types: list[str] = Field(...)
     eval_type: str = Field(...)
+    eval_steps: int = Field(...)
     eval_target_return: int = Field(...)
     eval_iters: int = Field(...)
-    eval_steps: int = Field(...)
+    adv_model_names: list[str] = Field(...)
+    adv_model_types: list[str] = Field(...)
+    adv_model_paths: list[str] = Field(...)
 
 
 def check_evalrun_config(config):

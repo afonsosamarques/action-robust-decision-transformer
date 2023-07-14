@@ -3,6 +3,8 @@ import torch
 
 from transformers import DecisionTransformerModel
 
+from .ardt_utils import DTEvalWrapper
+
 
 class TrainableDT(DecisionTransformerModel):
     def __init__(self, config, logger):
@@ -48,6 +50,9 @@ class TrainableDT(DecisionTransformerModel):
             new_kwargs["actions"] = new_kwargs.pop("pr_actions")
             new_kwargs.pop("adv_actions")
         return super().forward(**new_kwargs)
+    
+    def eval(self, **kwargs):
+        return DTEvalWrapper(self)
     
     def get_action(model, states, actions, rewards, returns_to_go, timesteps, device):
         # NOTE this implementation does not condition on past rewards

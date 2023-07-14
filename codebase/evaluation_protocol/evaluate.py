@@ -5,11 +5,15 @@ import gymnasium as gym
 import numpy as np
 import torch
 
+from requests.exceptions import ConnectionError, HTTPError
+
 from huggingface_hub import login
 
 from .eval_scripts import evaluate_envadv, evaluate_agentadv
 from .config_utils import check_evalrun_config, load_run_suffix, load_env_name
 from .helpers import find_root_dir
+
+from .access_tokens import HF_WRITE_TOKEN
 
 
 def launch_evaluation(
@@ -82,10 +86,15 @@ def launch_evaluation(
 if __name__ == "__main__":
     #
     # admin
+    try:
+        login(token=HF_WRITE_TOKEN)
+    except HTTPError or ConnectionError as e:
+        print("Could not connect to HuggingFace; proceeding without, will fail if required.")
+    
     device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda:0" if torch.cuda.is_available() else "cpu"))
     if device == "mps":
         os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
-
+    
     # load and check config
     with open(f'{find_root_dir()}/run-configs/evaluation.yaml', 'r') as f:
         config = yaml.safe_load(f)
@@ -114,7 +123,7 @@ if __name__ == "__main__":
                 adv_model_type=adv_model_type,
                 run_suffix=run_suffix,
                 verbose=True,
-                device=device,
-                model_path=find_root_dir()[:-len('/evaluation_protocol')] + model_path if model_path != 'hf' else model_path,
+                device=('cpu' if device=='mps' and model_type=='arrl' else device),  # NOTE HACK HACK to avoid running arrl with mps
+                model_path=find_root_dir()[:-len('evaluation_protocol')] + model_path if model_path != 'hf' else config.hf_project + '/' + model_name,
                 hf_project=config.hf_project,
             )

@@ -3,7 +3,7 @@ import torch
 
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
-from .ardt_utils import DecisionTransformerOutput
+from .ardt_utils import DecisionTransformerOutput, DTEvalWrapper
 from .ardt_utils import BetaParamsSquashFunc, StdSquashFunc, ExpFunc
 
 
@@ -412,6 +412,9 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                     # attentions=encoder_outputs.attentions,
                 )
 
+    def eval(self, **kwargs):
+        return DTEvalWrapper(self)
+    
     def get_action(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device):
         # NOTE this implementation does not condition on past rewards
         # reshape to model input format

@@ -22,7 +22,7 @@ def find_root_dir():
         root_dir = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).strip().decode('utf-8')
     except Exception as e:
         root_dir = os.getcwd()[:os.getcwd().find('action-robust-decision-transformer')+len('action-robust-decision-transformer')]
-    return root_dir + ('' if root_dir.endswith('action-robust-decision-transformer') else '/action-robust-decision-transformer') + "codebase/baselines/arrl/"
+    return root_dir + ('' if root_dir.endswith('action-robust-decision-transformer') else '/action-robust-decision-transformer') + "/codebase/baselines/arrl"
 
 
 if __name__ == "__main__":
@@ -247,7 +247,7 @@ if __name__ == "__main__":
         pickle.dump(results_dict, f)
     save_model(agent=agent, actor=agent.actor, adversary=agent.adversary, basedir=base_dir, obs_rms=agent.obs_rms, rew_rms=agent.ret_rms)
 
-    with open(f'{find_root_dir()}/datasets/arrl_{args.method.replace("-", "").replace("_", "")}_raw_dataset-{args.env_name}-{datetime.datetime.now().strftime("%d%m_%H%M")}.json', 'w') as f:
+    with open(f'{base_dir}/datasets/arrl_{args.method.replace("-", "").replace("_", "")}_raw_dataset-{args.env_name}-{datetime.datetime.now().strftime("%d%m_%H%M")}.json', 'w') as f:
         json.dump(hacky_store, f, indent=4)
 
     env.close()
