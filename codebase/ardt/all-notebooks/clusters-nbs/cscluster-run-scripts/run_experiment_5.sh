@@ -1,9 +1,9 @@
 #$ -S /bin/bash
 
-#$ -N ardt_simplest-halfcheetah-rarl_train_v2-envadv
+#$ -N ardt_vanilla-halfcheetah-d4rl_expert-envadv
 #$ -l gpu=1
-#$ -l tmem=4G
-#$ -l h_rt=6:00:00
+#$ -l tmem=8G
+#$ -l h_rt=12:00:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 
@@ -14,4 +14,4 @@ export PATH=$PATH:/share/apps/git-lfs-2.11.0/bin/
 source /home/amarques/envs/ardt-env/bin/activate
 
 nvidia-smi
-python3 -m ardt.pipeline --config_name ardt_simplest-halfcheetah-rarl_train_v2-envadv
+python3 -m ardt.pipeline --config_name ardt_vanilla-halfcheetah-d4rl_expert-envadv

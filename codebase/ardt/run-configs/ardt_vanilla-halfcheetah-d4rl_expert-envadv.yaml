@@ -13,19 +13,19 @@ dataset_config:
 model_config:
   agent_type: "ardt-vanilla"  # dt, ardt-simplest, ardt-vanilla, ardt-full
   context_size: [20]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
-  lambda1: [0.01, 0.05, 0.2]  # these are for different parameter combinations to try!!
+  lambda1: [0.0, 0.1, 0.5]  # these are for different parameter combinations to try!!
   lambda2: [4.0, 7.0, 10.0]  # these are for different parameter combinations to try!
 
 training_config:
-  train_steps: 6  # 6 => 10**6
+  train_steps: 5  # 6 => 10**6
   train_batch_size: 32  # 32/64
-  learning_rate: [-5, -4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
+  learning_rate: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   weight_decay: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   max_grad_norm: [0.25]  # these are for different parameter combinations to try!! | original: 0.25
-  warmup_steps: [3, 4]  # these are for different parameter combinations to try!! again 4 => 10**4 | original: 10**5
+  warmup_steps: [4]  # these are for different parameter combinations to try!! again 4 => 10**4 | original: 10**5
 
 evaluation_config:
-  is_eval: true  # whether to run evaluation
+  is_eval: false  # whether to run evaluation
   eval_type: "env_adv"  # no_adv, env_adv, agent_adv
   eval_target_return: 12000  # note this should depend on environment!! 12k/6k for halfcheetah for example
   eval_iters: 20  # just enough to get some CLT going

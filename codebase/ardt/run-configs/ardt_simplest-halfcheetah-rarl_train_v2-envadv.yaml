@@ -14,7 +14,7 @@ model_config:
   agent_type: "ardt-simplest"  # dt, ardt-simplest, ardt-vanilla, ardt-full
   context_size: [20]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
   lambda1: []  # these are for different parameter combinations to try!!
-  lambda2: [7.0, 10.0]  # these are for different parameter combinations to try!!
+  lambda2: [0.2, 0.5, 1.0]  # these are for different parameter combinations to try!!
 
 training_config:
   train_steps: 5  # 6 => 10**6
@@ -22,7 +22,7 @@ training_config:
   learning_rate: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   weight_decay: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   max_grad_norm: [0.25]  # these are for different parameter combinations to try!! | original: 0.25
-  warmup_steps: []  # these are for different parameter combinations to try!! again 4 => 10**4 | original: 10**5
+  warmup_steps: [4]  # these are for different parameter combinations to try!! again 4 => 10**4 | original: 10**5
 
 evaluation_config:
   is_eval: false  # whether to run evaluation

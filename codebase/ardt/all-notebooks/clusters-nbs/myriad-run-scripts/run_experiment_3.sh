@@ -6,7 +6,7 @@
 #$ -l tmpfs=2G
 #$ -l h_rt=6:00:00
 
-#$ -wd /home/ucabscm
+#$ -wd /home/ucabscm/action-robust-decision-transformer/codebase
 
 module purge
 module load default-modules
@@ -15,7 +15,7 @@ module remove git/2.32.0
 module load git/2.41.0-lfs-3.3.0
 module load python/3.9.10
 
-source ardt-env/ardt/bin/activate
+source /home/ucabscm/envs/ardt-env/bin/activate
 
 nvidia-smi
-python3 action-robust-decision-transformer/ardt/pipeline.py --config_name dt-halfcheetah-rarl_train_v2-envadv
+python3 -m ardt.pipeline --config_name dt-halfcheetah-rarl_train_v2-envadv
