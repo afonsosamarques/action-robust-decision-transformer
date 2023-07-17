@@ -10,6 +10,9 @@ from ardt.model.ardt_vanilla import SingleAgentRobustDT
 from ardt.model.ardt_full import TwoAgentRobustDT
 from ardt.model.trainable_dt import TrainableDT
 from baselines.arrl.ddpg import DDPG
+from stable_baselines3 import PPO
+from sb3_contrib import TRPO
+from baselines.non_adv.model_wrapper import SBEvalWrapper
 
 
 ############################ Common ############################
@@ -37,6 +40,13 @@ def load_env_name(env_type):
 
 def load_ddpg_model(path):
     var_dict = torch.load(f"{path}/ddpg_vars")
+    if 'gamma' not in var_dict:
+        # FIXME temporary for backward compatibility (harmless)
+        var_dict['gamma'] = 0.99
+        var_dict['tau'] = 0.01
+        var_dict['hidden_size'] = 64
+        var_dict['num_inputs'] = 17
+        var_dict['action_space'] = 6
     agent = DDPG(gamma=var_dict['gamma'], tau=var_dict['tau'], hidden_size=var_dict['hidden_size'], num_inputs=var_dict['num_inputs'],
                  action_space=var_dict['action_space'], train_mode=False, alpha=0, replay_size=0, normalize_obs=True)
 
@@ -74,6 +84,16 @@ def load_model(model_type, model_to_use, model_path):
         return model.from_pretrained(model_path, use_auth_token=True), True
     elif model_type == "arrl":
         return load_ddpg_model(model_path), True
+    elif model_type == "ppo":
+        # because we need some methods to be defined and it is hard work to override stable baselines, we wrap it straight away
+        with open(model_path, 'rb'):
+            model = PPO.load(model_path)
+        return SBEvalWrapper(model), False
+    elif model_type == "trpo":
+        # because we need some methods to be defined and it is hard work to override stable baselines, we wrap it straight away
+        with open(model_path, 'rb'):
+            model = TRPO.load(model_path)
+        return SBEvalWrapper(model), False
     else:
         raise Exception(f"Model {model_to_use} of type {model_type} not available.")
 
@@ -108,7 +128,7 @@ def check_evalrun_config(config):
     if config.eval_type == 'agent_adv':
         assert len(config.adv_model_names) > 0, "There need to be at least one adversarial model."
         assert len(config.adv_model_names) == len(config.adv_model_types), "There need to be as many adversarial model names as adversarial model types."
-    assert all([mt in ['dt', 'ardt-simplest', 'ardt_simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl'] for mt in config.trained_model_types]), "Model types need to be either 'dt', 'ardt-simplest', 'ardt-vanilla', 'ardt-full' or 'arrl'."
+    assert all([mt in ['dt', 'ardt-simplest', 'ardt_simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'ppo', 'trpo'] for mt in config.trained_model_types]), "Model types need to be either 'dt', 'ardt-simplest', 'ardt-vanilla', 'ardt-full' or 'arrl'."
     assert config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
     assert config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
     return config

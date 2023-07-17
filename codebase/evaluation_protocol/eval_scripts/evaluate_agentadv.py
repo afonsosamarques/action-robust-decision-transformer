@@ -39,13 +39,15 @@ def evaluate(
     pr_model = pr_model.eval(mdp_type=('pr_mdp' if 'pr_mdp' in pr_model_path else ('nr_mdp' if 'nr_mdp' in pr_model_path else None)))
 
     try:
-        adv_model, _ = load_model(adv_model_type, adv_model_name, model_path=(adv_model_path if adv_model_path is not None else hf_project + f"/{adv_model_name}"))
+        adv_model, is_adv_adv_model = load_model(adv_model_type, adv_model_name, model_path=(adv_model_path if adv_model_path is not None else hf_project + f"/{adv_model_name}"))
     except HTTPError as e:
         print(f"Could not load adversary model {adv_model_name} from repo.")
         raise e
     adv_model.to(device)
     adv_model = adv_model.eval(mdp_type=('pr_mdp' if 'pr_mdp' in adv_model_path else ('nr_mdp' if 'nr_mdp' in adv_model_path else None)))
-    
+    if not is_adv_adv_model:
+        raise RuntimeError("Adversarial agent does not include any adversarial element, therefore cannot be used as such.")
+
     # evaluation loop
     print("\n================================================")
     print(f"Evaluating protagonist model {pr_model_name} on environment {env_type} against adversarial model {adv_model_name}.")
@@ -58,9 +60,7 @@ def evaluate(
         run_idx += 1
         if n_runs >= eval_iters:
             break
-        if (run_idx % min(5, eval_iters/2)) == 0:
-            print(f"Run number {run_idx}...")
-        
+
         with torch.no_grad():
             # set up environment for run
             env = gym.make(env_name)
@@ -81,7 +81,7 @@ def evaluate(
 
                 # FIXME for now we will just sum the two actions... (assuming same action space)
                 if t == 1:
-                    print("Starting episode, checking that adversary is active. Adversarial action: ", adv_action)
+                    print(f"Starting episode {run_idx}. Checking that adversary is active. Adversarial action: ", adv_action)
                 cumul_action = (pr_action + adv_action)
                 state, reward, done, _, _ = env.step(cumul_action)
 

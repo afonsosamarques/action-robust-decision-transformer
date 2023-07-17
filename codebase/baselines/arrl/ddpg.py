@@ -364,7 +364,7 @@ class DDPG:
             param = params[name]
             param += torch.randn(param.shape).to(self.device) * param_noise.current_stddev
 
-    def to(self, device='cpu'):
+    def to(self, device=torch.device('cpu')):
         self.device = device
 
 

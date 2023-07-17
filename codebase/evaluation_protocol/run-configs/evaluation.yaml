@@ -2,9 +2,9 @@ env_type: "halfcheetah"  # halfcheetah, hopper, walker2d
 run_type: "test"  # "core", "pipeline", or "test"
 hf_project: 'ARDT-Project' # personal project, or ARDT-Project
 
-trained_model_names: ['ddpg_nr_1', 'ardt_vanilla_halfcheetah']  # names from models stored on the repo
-trained_model_types: ['arrl', 'ardt-vanilla']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl
-trained_model_paths: ['evaluation_protocol/trained-models/arrl/ou_noise/nr_mdp_0.1_10/1', 'evaluation_protocol/trained-models/ardt/ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-1707_2217']  # hf if hf hosted, otherwise actual local path to model from 'codebase' directory down
+trained_model_names: ['ddpg_nr_1', 'ardt_vanilla_halfcheetah', 'ppo']  # names from models stored on the repo
+trained_model_types: ['arrl', 'ardt-vanilla', 'ppo']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, 'ppo', 'trpo'
+trained_model_paths: ['evaluation_protocol/trained-models/arrl/ou_noise/nr_mdp_0.1_10/1', 'evaluation_protocol/trained-models/ardt/ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-1707_2217', 'evaluation_protocol/trained-models/non-adv/ppo_halfcheetah.zip']  # hf if hf hosted, otherwise actual local path to model from 'codebase' directory down
 eval_type: "agent_adv"  # no_adv, env_adv, agent_adv
 eval_steps: 1000  # 1000 is the default in DT
 eval_target_return: 12000  # note this should depend on environment and steps!! 12k is for halfcheetah and 1000 steps for example

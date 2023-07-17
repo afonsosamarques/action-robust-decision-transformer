@@ -74,8 +74,6 @@ def evaluate(
         run_idx += 1
         if n_runs >= eval_iters:
             break
-        if (run_idx % min(5, eval_iters/2)) == 0:
-            print(f"Run number {run_idx}...")
         
         try:
             with torch.no_grad():
@@ -84,7 +82,7 @@ def evaluate(
                 set_seed_everywhere(run_idx, env)
                 if is_adv_eval:
                     env = sample_env_params(env)
-                    print("Checking that sampling worked. Gravity: ", env.model.opt.gravity)
+                    print(f"Starting episode {run_idx}. Checking that sampling worked. Gravity: ", env.model.opt.gravity)
 
                 # set up episode variables
                 episode_return, episode_length = 0, 0
@@ -145,10 +143,10 @@ def evaluate(
         scrappy_print_eval_dict(model_name, eval_dict)
 
     # save eval_dict as json
-    dir_path = f'{find_root_dir()}/eval-outputs{run_suffix}/'
+    dir_path = f'{find_root_dir()}/eval-outputs{run_suffix}/{model_name}/'
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
-    with open(f'{dir_path}/{model_name}.json', 'w') as f:
+    with open(f"{dir_path}/{('env-adv' if is_adv_eval else 'no-adv')}.json", 'w') as f:
         json.dump(eval_dict, f)
 
     # cleanup admin
