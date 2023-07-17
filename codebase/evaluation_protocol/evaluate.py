@@ -113,7 +113,7 @@ if __name__ == "__main__":
     for model_name, model_type, model_path in zip(config.trained_model_names, config.trained_model_types, config.trained_model_paths):
         adv_model_names = config.adv_model_names if config.eval_type == 'agent_adv' else [None]
         adv_model_types = config.adv_model_types if config.eval_type == 'agent_adv' else [None]
-        adv_model_paths = config.adv_model_paths if config.eval_type == 'agent_adv' else [None]
+        adv_model_paths = config.adv_model_paths if config.eval_type == 'agent_adv' else ['']
 
         for adv_model_name, adv_model_type, adv_model_path in zip(adv_model_names, adv_model_types, adv_model_paths):
             # NOTE HACK HACK cannot run arrl using mps

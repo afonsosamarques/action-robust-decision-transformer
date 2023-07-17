@@ -90,12 +90,14 @@ def evaluate(
                     adv_action=adv_action, 
                     state=state, 
                     reward=reward,
+                    timestep=t
                 )
                 adv_model.update_history(
                     pr_action=pr_action, 
                     adv_action=adv_action, 
                     state=state, 
                     reward=reward,
+                    timestep=t
                 )
 
                 episode_return += reward

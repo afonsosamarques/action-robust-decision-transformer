@@ -200,7 +200,6 @@ class DTEvalWrapper(EvalWrapper):
     def get_action(self, **kwargs):
         if not self.has_started:
             raise RuntimeError("Must call new_eval before get_action.")
-        self.t += 1
         self.pr_actions = torch.cat([self.pr_actions, torch.zeros((1, self.model.config.pr_act_dim), device=self.device)], dim=0)
         self.adv_actions = torch.cat([self.adv_actions, torch.zeros((1, self.model.config.adv_act_dim), device=self.device)], dim=0)
         self.rewards = torch.cat([self.rewards, torch.zeros(1, device=self.device)])
@@ -216,7 +215,7 @@ class DTEvalWrapper(EvalWrapper):
         )
         return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()
     
-    def update_history(self, pr_action, adv_action, state, reward):
+    def update_history(self, pr_action, adv_action, state, reward, timestep):
         if not self.has_started:
             raise RuntimeError("Must call new_eval before get_action.")
         self.pr_actions[-1] = torch.tensor(pr_action).to(device=self.device)
@@ -229,5 +228,6 @@ class DTEvalWrapper(EvalWrapper):
         pred_return = self.target_return[0, -1] - (reward / self.returns_scale)
         self.target_return = torch.cat([self.target_return, pred_return.reshape(1, 1)], dim=1)
 
+        self.t = timestep
         self.timesteps = torch.cat([self.timesteps, torch.ones((1, 1), device=self.device, dtype=torch.long) * (self.t + 1)], dim=1)
     

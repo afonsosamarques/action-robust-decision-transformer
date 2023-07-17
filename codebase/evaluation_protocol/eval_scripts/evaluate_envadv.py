@@ -102,6 +102,7 @@ def evaluate(
                         adv_action=adv_action, 
                         state=state, 
                         reward=reward,
+                        timestep=t
                     )
                     episode_return += reward
                     episode_length += 1
