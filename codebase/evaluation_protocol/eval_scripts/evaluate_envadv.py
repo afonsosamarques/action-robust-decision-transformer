@@ -46,7 +46,7 @@ def evaluate(
         is_adv_eval=False,
         run_suffix='',
         verbose=False,
-        device='cpu',
+        device=torch.device('cpu'),
         model_path=None,
         hf_project=None,
     ):

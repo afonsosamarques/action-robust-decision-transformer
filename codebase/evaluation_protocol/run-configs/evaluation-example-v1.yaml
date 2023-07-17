@@ -12,5 +12,5 @@ eval_iters: 5  # ensure robust evaluation
 
 # only if using an explicit adversary!! i.e. eval_type = "agent_adv"
 adv_model_names: ['ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-5ad934cc', 'ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-5fb0de6f', 'ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-6433b36b']  # names from models stored on the repo
-adv_model_types: ['ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla']  # dt, ardt-simplest, ardt-vanilla, ardt-full
+adv_model_types: ['ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl
 adv_model_paths: ['hf', 'hf', 'hf']  # hf if hf hosted, otherwise actual local path to model from 'action-robust-decision-transformer' directory down
