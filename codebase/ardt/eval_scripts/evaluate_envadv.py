@@ -122,7 +122,7 @@ def evaluate(
                     adv_actions[-1] = adv_action
                     action = pr_action.detach().cpu().numpy()
 
-                    state, reward, done, _, _ = env.step(action)
+                    state, reward, done, trunc, info = env.step(action)
 
                     cur_state = torch.from_numpy(state.astype(np.float32)).to(device=device).reshape(1, model.config.state_dim)
                     states = torch.cat([states, cur_state], dim=0)
@@ -136,7 +136,7 @@ def evaluate(
                     episode_length += 1
 
                     # finish and log episode
-                    if done or t == model.config.max_ep_len - 1:
+                    if done or trunc or t == model.config.max_ep_len - 1:
                         n_runs += 1
                         eval_dict['iter'].append(run_idx)
                         eval_dict['env_seed'].append(run_idx)

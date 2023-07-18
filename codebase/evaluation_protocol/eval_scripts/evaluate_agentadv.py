@@ -83,7 +83,7 @@ def evaluate(
                 if t == 1:
                     print(f"Starting episode {run_idx}. Checking that adversary is active. Adversarial action: ", adv_action)
                 cumul_action = (pr_action + adv_action)
-                state, reward, done, _, _ = env.step(cumul_action)
+                state, reward, done, trunc, _ = env.step(cumul_action)
 
                 pr_model.update_history(
                     pr_action=pr_action, 
@@ -104,7 +104,7 @@ def evaluate(
                 episode_length += 1
 
                 # finish and log episode
-                if done or t == env_steps - 1:
+                if done or trunc or t == env_steps - 1:
                     n_runs += 1
                     eval_dict['iter'].append(run_idx)
                     eval_dict['env_seed'].append(run_idx)

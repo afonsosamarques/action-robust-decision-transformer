@@ -1,4 +1,5 @@
 import datetime
+import json
 
 import torch
 
@@ -13,6 +14,7 @@ from baselines.arrl.ddpg import DDPG
 from stable_baselines3 import PPO
 from sb3_contrib import TRPO
 from baselines.non_adv.model_wrapper import SBEvalWrapper
+from baselines.all_random.random_agent import RandomAgent, RandomAgentWrapper
 
 
 ############################ Common ############################
@@ -65,7 +67,7 @@ def load_ddpg_model(path):
     return agent
 
 
-def load_model(model_type, model_to_use, model_path):
+def load_model(model_type, model_to_use, model_path, action_space=None):
     if model_type == "dt":
         config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
         model = TrainableDT(config)
@@ -94,6 +96,12 @@ def load_model(model_type, model_to_use, model_path):
         with open(model_path, 'rb'):
             model = TRPO.load(model_path)
         return SBEvalWrapper(model), False
+    elif model_type == "random":
+        # really we could just pass in the action space, but this is more similar to the rest of it
+        # just need a json file with the action space of the given environment we are evaluating on
+        with open(model_path, 'rb'):
+            model_params = json.load(model_path)
+        return RandomAgentWrapper(RandomAgent(model_params['action_space'])), True
     else:
         raise Exception(f"Model {model_to_use} of type {model_type} not available.")
 

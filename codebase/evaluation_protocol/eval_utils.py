@@ -6,7 +6,7 @@ class EvalWrapper:
         pass
 
     def get_action(self, *args, **kwargs):
-        pass
+        return self.model.get_action(*args, **kwargs)
     
     def update_history(self, *args, **kwargs):
         pass

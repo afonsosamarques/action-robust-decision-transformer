@@ -32,11 +32,11 @@ def eval_model(_env, alpha):
             if random.random() < alpha:
                 action = noise.sample(action.shape).view(action.shape)
 
-            state, reward, done, _ = _env.step(action.cpu().numpy()[0])
+            state, reward, done, trunc, info = _env.step(action.cpu().numpy()[0])
             total_reward += reward
 
             state = agent.Tensor([state])
-            if done:
+            if done or trunc:
                 break
     return total_reward
 

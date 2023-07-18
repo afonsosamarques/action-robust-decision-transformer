@@ -116,7 +116,7 @@ def evaluate(
 
                 # FIXME for now we will just sum the two actions... (assuming same action space)
                 cumul_action = (pr_action + adv_action).detach().cpu().numpy()
-                state, reward, done, _, _ = env.step(cumul_action)
+                state, reward, done, trunc, info = env.step(cumul_action)
 
                 cur_state = torch.from_numpy(state.astype(np.float32)).to(device=device).reshape(1, pr_model.config.state_dim)
                 states = torch.cat([states, cur_state], dim=0)
@@ -130,7 +130,7 @@ def evaluate(
                 episode_length += 1
 
                 # finish and log episode
-                if done or t == pr_model.config.max_ep_len - 1:
+                if done or trunc or t == pr_model.config.max_ep_len - 1:
                     n_runs += 1
                     eval_dict['iter'].append(run_idx)
                     eval_dict['env_seed'].append(run_idx)

@@ -181,7 +181,7 @@ if __name__ == "__main__":
 
                     state = next_state
 
-                    if done:
+                    if done or trunc:
                         results_dict['train_rewards'].append((total_steps, np.mean(episode_reward)))
                         episode_reward = 0
                         ep += 1
@@ -232,7 +232,7 @@ if __name__ == "__main__":
                     next_eval_state = agent.Tensor([next_eval_state])
 
                     eval_state = next_eval_state
-                    if done:
+                    if done or trunc:
                         results_dict['eval_rewards'].append((total_steps, eval_reward))
                         eval_state = agent.Tensor([eval_env.reset()])
                         eval_reward = 0

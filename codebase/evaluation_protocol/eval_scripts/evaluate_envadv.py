@@ -94,7 +94,7 @@ def evaluate(
                 # run episode
                 for t in range(env_steps):
                     pr_action, adv_action = model.get_action(state=state)
-                    state, reward, done, _, _ = env.step(pr_action)
+                    state, reward, done, trunc, _ = env.step(pr_action)
                     model.update_history(
                         pr_action=pr_action, 
                         adv_action=adv_action, 
@@ -106,7 +106,7 @@ def evaluate(
                     episode_length += 1
 
                     # finish and log episode
-                    if done or t == env_steps - 1:
+                    if done or trunc or t == env_steps - 1:
                         n_runs += 1
                         eval_dict['iter'].append(run_idx)
                         eval_dict['env_seed'].append(run_idx)
