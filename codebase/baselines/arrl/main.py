@@ -17,6 +17,17 @@ from .param_noise import AdaptiveParamNoiseSpec, ddpg_distance_metric
 from .utils import save_model, vis_plot
 
 
+def load_env_name(env_type):
+    if env_type == "halfcheetah":
+        return "HalfCheetah-v4"
+    elif env_type == "hopper":
+        return "Hopper-v4"
+    elif env_type == "walker2d":
+        return "Walker2d-v4"
+    else:
+        raise Exception(f"Environment {env_type} not available.")
+    
+
 def find_root_dir():
     try:
         root_dir = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).strip().decode('utf-8')
@@ -27,13 +38,13 @@ def find_root_dir():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env-name', default="HalfCheetah-v2",
+    parser.add_argument('--env-name', default="halfcheetah",
                         help='name of the environment to run')
     parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                         help='discount factor for reward (default: 0.99)')
     parser.add_argument('--tau', type=float, default=0.01, metavar='G',
                         help='discount factor for model (default: 0.01)')
-    parser.add_argument('--no_ou_noise', default=True, action='store_true')
+    parser.add_argument('--ou_noise', default=True, action='store_true')
     parser.add_argument('--param_noise', default=False, action='store_true')
     parser.add_argument('--noise_scale', type=float, default=0.2, metavar='G',
                         help='(default: 0.2)')
@@ -63,14 +74,14 @@ if __name__ == "__main__":
     if args.exploration_method is None:
         args.exploration_method = args.method
 
-    args.ou_noise = not args.no_ou_noise
     args.ratio = 10 if args.method == 'pr_mdp' else 1  # FIXME hacky way of setting defaults from the paper
+    args.env_name = load_env_name(args.env_name)
 
     env = NormalizedActions(gym.make(args.env_name))
     eval_env = NormalizedActions(gym.make(args.env_name))
 
     agent = DDPG(gamma=args.gamma, tau=args.tau, hidden_size=args.hidden_size, num_inputs=env.observation_space.shape[0],
-                action_space=env.action_space, train_mode=True, alpha=args.alpha, replay_size=args.replay_size)
+                action_space=env.action_space.shape[0], train_mode=True, alpha=args.alpha, replay_size=args.replay_size)
 
     results_dict = {'eval_rewards': [],
                     'value_losses': [],
@@ -186,7 +197,7 @@ if __name__ == "__main__":
                         episode_reward = 0
                         ep += 1
                         hacky_indict = None
-                        state = agent.Tensor([env.reset()])
+                        state = agent.Tensor([env.reset()[0]])
                         reset_noise(agent, ounoise, param_noise)
 
             # update model
@@ -234,7 +245,7 @@ if __name__ == "__main__":
                     eval_state = next_eval_state
                     if done or trunc:
                         results_dict['eval_rewards'].append((total_steps, eval_reward))
-                        eval_state = agent.Tensor([eval_env.reset()])
+                        eval_state = agent.Tensor([eval_env.reset()[0]])
                         eval_reward = 0
             save_model(agent=agent, actor=agent.actor, adversary=agent.adversary, basedir=base_dir, obs_rms=agent.obs_rms,
                     rew_rms=agent.ret_rms)
@@ -247,7 +258,8 @@ if __name__ == "__main__":
         pickle.dump(results_dict, f)
     save_model(agent=agent, actor=agent.actor, adversary=agent.adversary, basedir=base_dir, obs_rms=agent.obs_rms, rew_rms=agent.ret_rms)
 
-    with open(f'{base_dir}/datasets/arrl_{args.method.replace("-", "").replace("_", "")}_raw_dataset-{args.env_name}-{datetime.datetime.now().strftime("%d%m_%H%M")}.json', 'w') as f:
+    dir = find_root_dir() + '/datasets'
+    with open(f'{dir}/arrl_{args.method.replace("-", "").replace("_", "")}_raw_dataset-{args.env_name}-{datetime.datetime.now().strftime("%d%m_%H%M")}.json', 'w') as f:
         json.dump(hacky_store, f, indent=4)
 
     env.close()
