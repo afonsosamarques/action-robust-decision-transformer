@@ -161,7 +161,7 @@ def check_pipelinerun_config(config):
     })
     assert pipeline_config.environment_config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
     assert pipeline_config.dataset_config.online_policy_name in ['d4rl', 'rarl', 'prmdp', 'nrmdp', 'dataset_combo', 'randagent'], "Online policy name needs to be either 'd4rl', 'rarl', 'prmdp', 'nrmdp', 'dataset_combo' or 'randagent'."
-    assert pipeline_config.dataset_config.dataset_type in ['train', 'test', 'expert'], "Dataset type needs to be either 'train' or 'test' or 'expert'."
+    assert pipeline_config.dataset_config.dataset_type in ['train', 'test', 'expert', 'mixed'], "Dataset type needs to be either 'train' or 'test' or 'expert' or 'mixed'."
     assert pipeline_config.model_config.agent_type in ['dt', 'ardt-simplest', 'ardt-vanilla', 'ardt-full']
     assert pipeline_config.admin_config.wandb_project in ['afonsosamarques', 'ARDT-Project'], "Wandb project needs to be either 'afonsosamarques' or 'ARDT-Project'."
     assert pipeline_config.admin_config.hf_project in ['afonsosamarques', 'ARDT-Project'], "Wandb project needs to be either 'afonsosamarques' or 'ARDT-Project'."
@@ -194,6 +194,6 @@ def build_dataset_path(dataset_config, env_name, is_local=True, hf_project="afon
     return dataset_path, dataset_path.split('/')[-1]
 
 
-def build_model_name(model_type, env_type, dataset_name):
+def build_model_name(model_type, dataset_name):
     datetime_encoding = datetime.datetime.now().strftime("%d%m_%H%M")
-    return f"{model_type}-{env_type}-{dataset_name}-{datetime_encoding}"
+    return f"{model_type}-{dataset_name}-{datetime_encoding}"

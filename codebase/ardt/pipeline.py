@@ -213,7 +213,7 @@ if __name__ == "__main__":
         agent_type = model_config.agent_type
         env_type = env_config.env_type
         chosen_agent = load_agent(agent_type)
-        model_name = build_model_name(agent_type, env_type, dataset_name)
+        model_name = build_model_name(agent_type, dataset_name)
         
         # train and recover path
         model_path_local = train(
