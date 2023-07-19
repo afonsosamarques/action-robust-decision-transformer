@@ -230,4 +230,10 @@ class DTEvalWrapper(EvalWrapper):
 
         self.t = timestep
         self.timesteps = torch.cat([self.timesteps, torch.ones((1, 1), device=self.device, dtype=torch.long) * (self.t + 1)], dim=1)
-    
+
+
+def initialise_weights(module):
+    if isinstance(module, torch.nn.Linear):
+        torch.nn.init.xavier_uniform_(module.weight)
+        if module.bias is not None:
+            torch.nn.init.zeros_(module.bias)

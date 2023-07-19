@@ -5,6 +5,7 @@ from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
 from .ardt_utils import DecisionTransformerOutput, DTEvalWrapper
 from .ardt_utils import StdSquashFunc, ExpFunc
+from .ardt_utils import initialise_weights
 
 
 class SingleAgentRobustDT(DecisionTransformerModel):
@@ -34,6 +35,10 @@ class SingleAgentRobustDT(DecisionTransformerModel):
         self.predict_adv_action = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()] if config.action_tanh else []))
         )
+
+        self.predict_mu.apply(initialise_weights)
+        self.predict_sigma.apply(initialise_weights)
+        self.predict_adv_action.apply(initialise_weights)
 
         self.post_init()
 
