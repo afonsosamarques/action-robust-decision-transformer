@@ -6,7 +6,7 @@ environment_config:
 
 dataset_config:
   is_local: true  # true, false, whether it is stored locally or up on HF
-  online_policy_name: "d4rl"  # d4rl, rarl, nrdmp, prmdp, dataset_combo, etc.
+  online_policy_name: "d4rl"  # d4rl, rarl, arrl_nrdmp, arrl_prmdp, dataset_combo, randagent, etc.
   dataset_type: "expert"  # train, test, expert
   dataset_version: ""  # fill only if there is any type of versioning to the dataset being considered, otherwise leave blank
 
@@ -34,8 +34,8 @@ evaluation_config:
   adv_model_types: []  # dt, ardt-simplest, ardt-vanilla, ardt-full
 
 admin_config:
-  wandb_project: "ARDT-Project"  # "afonsosamarques", "ARDT-Project"
-  hf_project: "afonsosamarques"  # "afonsosamarques", "ARDT-Project"
+  wandb_project: "ARDT-Project"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
+  hf_project: "afonsosamarques"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
   run_type: "pipeline"  # "core", "pipeline", or "test"
   is_verbose: false  # whether to print anything at all
   print_tracebacks: false  # whether to print tracebacks of errors

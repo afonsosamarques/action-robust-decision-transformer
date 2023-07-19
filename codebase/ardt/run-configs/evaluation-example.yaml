@@ -2,10 +2,10 @@ env_type: "halfcheetah"  # halfcheetah, hopper, walker2d
 
 run_type: "test"  # "core", "pipeline", or "test"
 
-hf_project: "afonsosamarques"  # "afonsosamarques", "ARDT-Project"
+hf_project: "afonsosamarques"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
 
 trained_model_names: ['ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-5ad934cc', 'ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-5fb0de6f', 'ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-6433b36b']  # names from models stored on the repo
-trained_model_types: ['ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla']  # dt, ardt-simplest, ardt-vanilla, ardt-full
+trained_model_types: ['ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, ppo, trpo, randagent
 
 eval_type: "no_adv"  # no_adv, env_adv, agent_adv
 eval_target_return: 12000  # note this should depend on environment!! 12k is for halfcheetah for example
@@ -13,4 +13,4 @@ eval_iters: 50  # ensure robust evaluation
 
 # only if using an explicit adversary!! i.e. eval_type = "agent_adv"
 adv_model_names: ['ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-5ad934cc', 'ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-5fb0de6f', 'ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-6433b36b']  # names from models stored on the repo
-adv_model_types: ['ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla']  # dt, ardt-simplest, ardt-vanilla, ardt-full
+adv_model_types: ['ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, randagent

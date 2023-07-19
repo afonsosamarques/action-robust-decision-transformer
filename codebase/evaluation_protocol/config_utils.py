@@ -96,7 +96,7 @@ def load_model(model_type, model_to_use, model_path, action_space=None):
         with open(model_path, 'rb'):
             model = TRPO.load(model_path)
         return SBEvalWrapper(model), False
-    elif model_type == "random":
+    elif model_type == "random" or model_type == "randagent":
         # really we could just pass in the action space, but this is more similar to the rest of it
         # just need a json file with the action space of the given environment we are evaluating on
         with open(model_path, 'rb'):
@@ -136,7 +136,7 @@ def check_evalrun_config(config):
     if config.eval_type == 'agent_adv':
         assert len(config.adv_model_names) > 0, "There need to be at least one adversarial model."
         assert len(config.adv_model_names) == len(config.adv_model_types), "There need to be as many adversarial model names as adversarial model types."
-    assert all([mt in ['dt', 'ardt-simplest', 'ardt_simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'ppo', 'trpo'] for mt in config.trained_model_types]), "Model types need to be either 'dt', 'ardt-simplest', 'ardt-vanilla', 'ardt-full' or 'arrl'."
+    assert all([mt in ['dt', 'ardt-simplest', 'ardt_simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'ppo', 'trpo', 'random', 'randagent'] for mt in config.trained_model_types]), "Model types need to be either 'dt', 'ardt-simplest', 'ardt-vanilla', 'ardt-full' or 'arrl'."
     assert config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
     assert config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
     return config
