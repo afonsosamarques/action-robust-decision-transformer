@@ -121,7 +121,7 @@ class SimpleRobustDT(DecisionTransformerModel):
             adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
-            if self.logger is not None:
+            if self.logger is not None and (self.step == 0 or self.step % self.config.log_interval_steps == 0):
                 self.logger.add_entry(
                     step=self.step,
                     hyperparams={"lambda2": self.config.lambda2},

@@ -31,7 +31,7 @@ def train(
         wandb_project='afonsosamarques',
         hf_project='afonsosamarques',
         run_suffix='',
-        device='cpu',
+        device=torch.device('cpu'),
     ):
     print("============================================================================================================")
     print(f"\nTraining {model_name} on dataset {dataset_name} on device {device}. Starting at {datetime.datetime.now()}.\n")
@@ -65,6 +65,7 @@ def train(
         max_ep_return=env_params['max_ep_return'],
         max_obs_return=collator.max_ep_return,
         warmup_steps=train_params['warmup_steps'],  # exception: this is used in training but due to HF API it must be in config as well
+        log_interval_steps=100,
     )
 
     # here we define the training protocol
@@ -87,11 +88,18 @@ def train(
         weight_decay=train_params['weight_decay'],
         warmup_steps=train_params['warmup_steps'],
         max_grad_norm=train_params['max_grad_norm'],
-        # FIXME causes issues dataloader_num_workers=min(4, (1 if os.cpu_count() is None else os.cpu_count()) // 2),
+        dataloader_num_workers=(2 if os.cpu_count() > 5 else 0),
         use_mps_device=(True if torch.backends.mps.is_available() else False),
-        logging_steps=(train_params['warmup_steps'] if train_params['warmup_steps'] > 0 else train_params['train_steps'] // 5),
-        log_level="info",
+        no_cuda=(True if device==torch.device('cpu') else False),
+        data_seed=33,
+        disable_tqdm=False,
+        log_level="error",
+        logging_strategy="steps",
+        logging_steps=0.05,
+        save_strategy="steps",
+        save_steps=0.2,
         report_to="wandb",
+        skip_memory_metrics=True,
         run_name=model_name,
         hub_model_id=model_name,
         push_to_hub=True,
@@ -129,7 +137,7 @@ if __name__ == "__main__":
     # admin
     login(token=HF_WRITE_TOKEN)
     wandb.login(key=WANDB_TOKEN)
-    device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda:0" if torch.cuda.is_available() else "cpu"))
+    device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
     if device == "mps":
         os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 

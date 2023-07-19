@@ -136,7 +136,7 @@ class SingleAgentRobustDT(DecisionTransformerModel):
                 dist_params[f"mu_{i}"] =  torch.mean(mu_preds[:, :, i]).item()
                 dist_params[f"sigma_{i}"] =  torch.mean(sigma_preds[:, :, i]).item()
 
-            if self.logger is not None:
+            if self.logger is not None and (self.step == 0 or self.step % self.config.log_interval_steps == 0):
                 self.logger.add_entry(
                     step=self.step,
                     hyperparams={"lambda1": self.config.lambda1, "lambda2": self.config.lambda2},

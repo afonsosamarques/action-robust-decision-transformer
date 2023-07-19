@@ -32,7 +32,7 @@ class TrainableDT(DecisionTransformerModel):
         self.step += 1
         loss = torch.mean((action_preds - action_targets) ** 2)
 
-        if self.logger is not None:
+        if self.logger is not None and (self.step == 0 or self.step % self.config.log_interval_steps == 0):
             self.logger.add_entry(
                 step=self.step,
                 hyperparams=None,

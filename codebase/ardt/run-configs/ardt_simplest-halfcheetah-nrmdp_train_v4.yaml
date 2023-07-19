@@ -18,7 +18,7 @@ model_config:
 
 training_config:
   train_steps: 4  # 6 => 10**6
-  train_batch_size: 32  # 32/64
+  train_batch_size: 64  # 32/64
   learning_rate: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   weight_decay: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   max_grad_norm: [0.25]  # these are for different parameter combinations to try!! | original: 0.25
