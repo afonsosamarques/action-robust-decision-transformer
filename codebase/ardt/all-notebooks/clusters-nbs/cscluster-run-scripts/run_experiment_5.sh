@@ -1,6 +1,6 @@
 #$ -S /bin/bash
 
-#$ -N ardt_vanilla-halfcheetah-d4rl_expert-envadv
+#$ -N ardt_vanilla-halfcheetah-d4rl_expert
 #$ -l gpu=1
 #$ -l tmem=8G
 #$ -l h_rt=12:00:00
@@ -14,4 +14,4 @@ export PATH=$PATH:/share/apps/git-lfs-2.11.0/bin/
 source /home/amarques/envs/ardt-env/bin/activate
 
 nvidia-smi
-python3 -m ardt.pipeline --config_name ardt_vanilla-halfcheetah-d4rl_expert-envadv
+python3 -m ardt.pipeline --config_name ardt_vanilla-halfcheetah-d4rl_expert

@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#$ -N dt-halfcheetah-d4rl_expert-envadv
+#$ -N dt-halfcheetah-d4rl_expert
 #$ -l gpu=1
 #$ -l mem=4G
 #$ -l tmpfs=2G
@@ -18,4 +18,4 @@ module load python/3.9.10
 source /home/ucabscm/envs/ardt-env/bin/activate
 
 nvidia-smi
-python3 -m ardt.pipeline --config_name dt-halfcheetah-d4rl_expert-envadv
+python3 -m ardt.pipeline --config_name dt-halfcheetah-d4rl_expert

@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#$ -N ardt_simplest-halfcheetah-rarl_train_v2-envadv
+#$ -N ardt_simplest-halfcheetah-nrmdp_train_v4
 #$ -l gpu=1
 #$ -l mem=4G
 #$ -l tmpfs=2G
@@ -18,4 +18,4 @@ module load python/3.9.10
 source /home/ucabscm/envs/ardt-env/bin/activate
 
 nvidia-smi
-python3 -m ardt.pipeline --config_name ardt_simplest-halfcheetah-rarl_train_v2-envadv
+python3 -m ardt.pipeline --config_name ardt_simplest-halfcheetah-nrmdp_train_v4

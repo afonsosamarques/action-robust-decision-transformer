@@ -1,6 +1,6 @@
 #$ -S /bin/bash
 
-#$ -N ardt_vanilla-halfcheetah-rarl_train_v2-envadv
+#$ -N ardt_vanilla-halfcheetah-nrmdp_train_v4
 #$ -l gpu=1
 #$ -l tmem=8G
 #$ -l h_rt=12:00:00
@@ -14,4 +14,4 @@ export PATH=$PATH:/share/apps/git-lfs-2.11.0/bin/
 source /home/amarques/envs/ardt-env/bin/activate
 
 nvidia-smi
-python3 -m ardt.pipeline --config_name ardt_vanilla-halfcheetah-rarl_train_v2-envadv
+python3 -m ardt.pipeline --config_name ardt_vanilla-halfcheetah-nrmdp_train_v4
