@@ -1,6 +1,7 @@
 #  Add-hoc gitignore for python project
 datasets/
 datasets-raw/
+datasets-to-push/
 env-sims*/
 agents*/
 eval-outputs*/
