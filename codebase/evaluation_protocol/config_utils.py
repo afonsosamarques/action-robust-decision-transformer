@@ -11,6 +11,7 @@ from ardt.model.ardt_vanilla import SingleAgentRobustDT
 from ardt.model.ardt_full import TwoAgentRobustDT
 from ardt.model.trainable_dt import TrainableDT
 from baselines.arrl.ddpg import DDPG
+from baselines.arrl_sgld.ddpg import DDPG as DDPG_SGLD
 from stable_baselines3 import PPO
 from sb3_contrib import TRPO
 from baselines.non_adv.model_wrapper import SBEvalWrapper
@@ -40,7 +41,7 @@ def load_env_name(env_type):
         raise Exception(f"Environment {env_type} not available.")
 
 
-def load_ddpg_model(path):
+def load_arrl_model(path):
     var_dict = torch.load(f"{path}/ddpg_vars")
     if 'gamma' not in var_dict:
         # FIXME temporary for backward compatibility (harmless)
@@ -67,7 +68,35 @@ def load_ddpg_model(path):
     return agent
 
 
-def load_model(model_type, model_to_use, model_path, action_space=None):
+def load_arrl_sgld_model(path):
+    var_dict = torch.load(f"{path}/ddpg_vars")
+    if 'gamma' not in var_dict:
+        # FIXME temporary for backward compatibility (harmless)
+        var_dict['gamma'] = 0.99
+        var_dict['tau'] = 0.01
+        var_dict['hidden_size'] = 64
+        var_dict['num_inputs'] = 17
+        var_dict['action_space'] = 6
+    agent = DDPG_SGLD(beta=var_dict['beta'], epsilon=var_dict['epsilon'], learning_rate=var_dict['learning_rate'], gamma=var_dict['gamma'], 
+                      tau=var_dict['tau'], alpha=0,
+                      hidden_size_dim0=var_dict['hidden_size_dim0'], hidden_size_dim1=var_dict['hidden_size_dim1'],
+                      num_inputs=var_dict['num_inputs'], action_space=var_dict['action_space'], 
+                      train_mode=False, replay_size=0, normalize_obs=True, optimizer=0, two_player=var_dict['two_player'])
+
+    agent.actor.load_state_dict(torch.load(f"{path}/ddpg_actor", map_location=lambda storage, loc: storage))
+    agent.adversary.load_state_dict(torch.load(f"{path}/ddpg_adversary", map_location=lambda storage, loc: storage))
+
+    var_dict = torch.load(f"{path}/ddpg_vars")
+    if var_dict['obs_rms_mean'] is not None:
+        agent.obs_rms.mean = var_dict['obs_rms_mean']
+        agent.obs_rms.var = var_dict['obs_rms_var']
+        agent.normalize_observations = True
+    else:
+        agent.obs_rms = None
+        agent.normalize_observations = False
+
+
+def load_model(model_type, model_to_use, model_path):
     if model_type == "dt":
         config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
         model = TrainableDT(config)
@@ -85,7 +114,9 @@ def load_model(model_type, model_to_use, model_path, action_space=None):
         model = TwoAgentRobustDT(config)
         return model.from_pretrained(model_path, use_auth_token=True), True
     elif model_type == "arrl":
-        return load_ddpg_model(model_path), True
+        return load_arrl_model(model_path), True
+    elif model_type == "arrl-sgld":
+        return load_arrl_sgld_model(model_path), True
     elif model_type == "ppo":
         # because we need some methods to be defined and it is hard work to override stable baselines, we wrap it straight away
         with open(model_path, 'rb'):
@@ -136,7 +167,7 @@ def check_evalrun_config(config):
     if config.eval_type == 'agent_adv':
         assert len(config.adv_model_names) > 0, "There need to be at least one adversarial model."
         assert len(config.adv_model_names) == len(config.adv_model_types), "There need to be as many adversarial model names as adversarial model types."
-    assert all([mt in ['dt', 'ardt-simplest', 'ardt_simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'ppo', 'trpo', 'random', 'randagent'] for mt in config.trained_model_types]), "Model types need to be either 'dt', 'ardt-simplest', 'ardt-vanilla', 'ardt-full' or 'arrl'."
+    assert all([mt in ['dt', 'ardt-simplest', 'ardt_simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'arrl-sgld', 'ppo', 'trpo', 'random', 'randagent'] for mt in config.trained_model_types]), "Model type needs to be either 'dt', 'ardt-simplest', 'ardt-simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'arrl-sgld', 'ppo', 'trpo', 'random' or 'randagent'."
     assert config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
     assert config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
     return config

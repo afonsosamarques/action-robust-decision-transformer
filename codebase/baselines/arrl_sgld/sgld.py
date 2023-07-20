@@ -1,6 +1,6 @@
 import torch
 from torch.distributions import Normal
-from .optimizer import Optimizer
+from torch.optim import Optimizer
 import numpy as np
 
 class SGLD(Optimizer):
@@ -49,12 +49,12 @@ class SGLD(Optimizer):
                 lr_t = group['lr'] * np.power((1 - 1e-5), state['step'] - 1)
                 noise_t = group['noise'] * np.power((1 - 5e-5), state['step'] - 1)
                 # sqavg x alpha + (1-alph) sqavg *(elemwise) sqavg
-                square_avg.mul_(alpha).addcmul_(1-alpha, d_p, d_p)
+                square_avg.mul_(alpha).addcmul_(tensor1=d_p, tensor2=d_p, value=1-alpha)
                 
                 if group['centered']:
                     grad_avg = state['grad_avg']
                     grad_avg.mul_(alpha).add_(1-alpha, d_p)
-                    avg = square_avg.addcmul(-1, grad_avg, grad_avg).sqrt().add_(group['eps'])
+                    avg = square_avg.addcmul(tensor1=grad_avg, tensor2=grad_avg, value=-1).sqrt().add_(group['eps'])
                 else:
                     avg = square_avg.sqrt().add_(group['eps'])
                     
@@ -66,8 +66,7 @@ class SGLD(Optimizer):
                         torch.zeros(size),
                         torch.ones(size).div_(lr_t).div_(avg).sqrt()
                     )
-                    p.data.add_(-lr_t,
-                                d_p.div_(avg) + np.sqrt(2) * noise_t * langevin_noise.sample())
+                    p.data.add_(other=d_p.div_(avg) + np.sqrt(2) * noise_t * langevin_noise.sample(), alpha=-lr_t)
                 else:
                     #p.data.add_(-group['lr'], d_p.div_(avg))
                     p.data.addcdiv_(-lr_t, d_p, avg)

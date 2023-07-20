@@ -1,15 +1,19 @@
 import torch
 from torch.optim import Adam
 from torch.optim import RMSprop
-from torch.optim import SGLD
-from torch.optim import ExtraAdam
 from torch.autograd import Variable
 import torch.nn.functional as F
-from network import Critic, Actor
 import os
 import numpy as np
-from utils import RunningMeanStd
-from replay_memory import ReplayMemory, Transition
+
+from .sgld import SGLD
+from .extra_adam import ExtraAdam
+
+from .network import Critic, Actor
+from .utils import RunningMeanStd
+from .replay_memory import ReplayMemory, Transition
+
+from evaluation_protocol.eval_utils import EvalWrapper
 
 
 def soft_update(target, source, tau):
@@ -52,12 +56,17 @@ class DDPG:
             self.device = torch.device('cuda')
             torch.backends.cudnn.enabled = False
             self.Tensor = torch.cuda.FloatTensor
+        # elif torch.backends.mps.is_available():
+        #     self.device = torch.device('mps')
+        #     self.Tensor = torch.Tensor
         else:
             self.device = torch.device('cpu')
             self.Tensor = torch.FloatTensor
 
         self.alpha = alpha
         self.train_mode = train_mode
+        self.hidden_size_dim0 = hidden_size_dim0
+        self.hidden_size_dim1 = hidden_size_dim1
 
         self.num_inputs = num_inputs
         self.action_space = action_space
@@ -117,11 +126,12 @@ class DDPG:
 
         self.memory = ReplayMemory(replay_size)
        
-    def eval(self):
+    def eval(self, mdp_type=None, **kwargs):
         self.actor.eval()
         self.adversary.eval()
         if self.train_mode:
             self.critic.eval()
+        return DDPGSGLDEvalWrapper(self, mdp_type)
 
     def train(self):
         self.actor.train()
@@ -134,7 +144,7 @@ class DDPG:
 
         if mdp_type != 'mdp':
             
-            if(self.optimizer == 'SGLD' and self.two_player):
+            if (self.optimizer == 'SGLD' and self.two_player):
                 mu = self.actor_outer(state)
             else:
                 mu = self.actor(state)
@@ -142,7 +152,8 @@ class DDPG:
             if action_noise is not None:
                 mu += self.Tensor(action_noise()).to(self.device)
 
-            mu = mu.clamp(-1, 1) * (1 - self.alpha)
+            pr_mu = mu.clamp(-1, 1) * (1 - self.alpha)
+            mu = pr_mu
 
             if(self.optimizer == 'SGLD' and self.two_player):
                 adv_mu = self.adversary_outer(state)
@@ -150,6 +161,8 @@ class DDPG:
                 adv_mu = self.adversary(state)
             adv_mu = adv_mu.data.clamp(-1, 1) * self.alpha
             mu += adv_mu
+
+            return mu, pr_mu, adv_mu
             
         else:
  
@@ -163,8 +176,7 @@ class DDPG:
                 mu += self.Tensor(action_noise()).to(self.device)
 
             mu = mu.clamp(-1, 1)
-
-        return mu
+            return mu
 
     def update_robust_non_flip(self, state_batch, action_batch, reward_batch, mask_batch, next_state_batch,
                       mdp_type, robust_update_type):
@@ -374,3 +386,17 @@ class DDPG:
         soft_update(self.adversary_target, self.adversary, self.tau)
         soft_update(self.critic_target, self.critic, self.tau)
 
+    def to(self, device=torch.device('cpu')):
+        self.device = device
+
+
+class DDPGSGLDEvalWrapper(EvalWrapper):
+    def __init__(self, model, mdp_type=None, **kwargs):
+        super().__init__(model)
+        assert mdp_type == 'nr_mdp', "Only valid mdp type at evaluation time is NR-MDP."
+        self.mdp_type = mdp_type
+    
+    def get_action(self, state):
+        state = self.model.Tensor(state)
+        action, pr_action, adv_action = self.model.select_action(state, mdp_type=self.mdp_type)
+        return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()  
