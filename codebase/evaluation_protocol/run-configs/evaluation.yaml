@@ -1,16 +1,16 @@
 env_type: "halfcheetah"  # halfcheetah, hopper, walker2d
-run_type: "test"  # "core", "pipeline", or "test"
-hf_project: 'ARDT-Project' # personal project, or ARDT-Project, or ARDT-Internal
+run_type: "pipeline"  # "core", "pipeline", or "test"
+hf_project: 'afonsosamarques' # personal project, or ARDT-Project, or ARDT-Internal
 
-trained_model_names: ['ddpg_nr_1', 'ardt_vanilla_halfcheetah', 'ppo']  # names from models stored on the repo
-trained_model_types: ['arrl', 'ardt-vanilla', 'ppo']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, ppo, trpo, randagent
-trained_model_paths: ['evaluation_protocol/trained-models/arrl/ou_noise/nr_mdp_0.1_10/1', 'evaluation_protocol/trained-models/ardt/ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-1707_2217', 'evaluation_protocol/trained-models/non-adv/ppo_halfcheetah.zip']  # hf if hf hosted, otherwise actual local path to model from 'codebase' directory down
-eval_type: "agent_adv"  # no_adv, env_adv, agent_adv
+trained_model_names: []  # names from models stored on the repo (any readable identifier is ok if stored locally)
+trained_model_types: []  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, ppo, trpo, randagent
+trained_model_paths: []  # hf if hf hosted, otherwise actual local path to model from 'codebase' directory down
+eval_type: "no_adv"  # no_adv, env_adv, agent_adv
 eval_steps: 1000  # 1000 is the default in DT
 eval_target_return: 12000  # note this should depend on environment and steps!! 12k is for halfcheetah and 1000 steps for example
-eval_iters: 5  # ensure robust evaluation
+eval_iters: 30  # ensure robust evaluation
 
 # only if using an explicit adversary!! i.e. eval_type = "agent_adv"
-adv_model_names: ['ddpg_nr_1', 'ardt_vanilla_halfcheetah']  # names from models stored on the repo
-adv_model_types: ['arrl', 'ardt-vanilla']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, randagent
-adv_model_paths: ['evaluation_protocol/trained-models/arrl/ou_noise/nr_mdp_0.1_10/1', 'evaluation_protocol/trained-models/ardt/ardt-vanilla-halfcheetah-d4rl_expert_halfcheetah-1707_2217']  # hf if hf hosted, otherwise actual local path to model from 'action-robust-decision-transformer' directory down
+adv_model_names: []  # names from models stored on the repo
+adv_model_types: []  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, randagent
+adv_model_paths: []  # hf if hf hosted, otherwise actual local path to model from 'action-robust-decision-transformer' directory down
