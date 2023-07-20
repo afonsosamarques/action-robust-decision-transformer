@@ -2,13 +2,13 @@ env_type: "halfcheetah"  # halfcheetah, hopper, walker2d
 run_type: "pipeline"  # "core", "pipeline", or "test"
 hf_project: 'afonsosamarques' # personal project, or ARDT-Project, or ARDT-Internal
 
-trained_model_names: []  # names from models stored on the repo (any readable identifier is ok if stored locally)
-trained_model_types: []  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, ppo, trpo, randagent
-trained_model_paths: []  # hf if hf hosted, otherwise actual local path to model from 'codebase' directory down
+trained_model_names: ['ardt-simplest-d4rl_expert_halfcheetah-1907_1725', 'dt-d4rl_expert_halfcheetah-1907_1733', 'ardt-simplest-dataset_combo_train_halfcheetah_v1-1907_1733', 'dt-dataset_combo_train_halfcheetah_v1-1907_1744', 'ardt-simplest-nrmdp_train_halfcheetah_v4-1907_1752', 'dt-nrmdp_train_halfcheetah_v4-1907_1851', 'ardt-simplest-d4rl_expert_halfcheetah-1907_2219', 'ardt-simplest-dataset_combo_train_halfcheetah_v1-1907_2302', 'ardt-simplest-nrmdp_train_halfcheetah_v4-1907_2346', 'ardt-simplest-d4rl_expert_halfcheetah-2007_0307', 'ardt-simplest-dataset_combo_train_halfcheetah_v1-2007_0418', 'ardt-simplest-nrmdp_train_halfcheetah_v4-2007_0517']  # names from models stored on the repo (any readable identifier is ok if stored locally)
+trained_model_types: ['ardt-simplest', 'dt', 'ardt-simplest', 'dt', 'ardt-simplest', 'dt', 'ardt-simplest', 'ardt-simplest', 'ardt-simplest', 'ardt-simplest', 'ardt-simplest', 'ardt-simplest']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, ppo, trpo, randagent
+trained_model_paths: ['hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf']  # hf if hf hosted, otherwise actual local path to model from 'codebase' directory down
 eval_type: "no_adv"  # no_adv, env_adv, agent_adv
 eval_steps: 1000  # 1000 is the default in DT
 eval_target_return: 12000  # note this should depend on environment and steps!! 12k is for halfcheetah and 1000 steps for example
-eval_iters: 30  # ensure robust evaluation
+eval_iters: 2  # ensure robust evaluation
 
 # only if using an explicit adversary!! i.e. eval_type = "agent_adv"
 adv_model_names: []  # names from models stored on the repo
