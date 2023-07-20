@@ -81,7 +81,7 @@ if __name__ == "__main__":
     #
     # admin
     login(token=HF_WRITE_TOKEN)
-    device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda:0" if torch.cuda.is_available() else "cpu"))
+    device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
     if device == "mps":
         os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 

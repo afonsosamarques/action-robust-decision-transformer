@@ -75,7 +75,7 @@ def evaluate(
 
             # set up episode variables
             episode_return, episode_length = 0, 0
-            returns_scale = pr_model.config.returns_scale if 'returns_scale' in pr_model.config.to_dict().keys() else pr_model.config.scale  # FIXME backwards compatibility
+            returns_scale = pr_model.config.returns_scale
             target_return = torch.tensor(eval_target/returns_scale, device=device, dtype=torch.float32).reshape(1, 1)
             states = torch.from_numpy(state).reshape(1, pr_model.config.state_dim).to(device=device, dtype=torch.float32)
             pr_actions = torch.zeros((0, pr_model.config.pr_act_dim), device=device, dtype=torch.float32)
@@ -114,7 +114,6 @@ def evaluate(
                 pr_actions[-1] = pr_action
                 adv_actions[-1] = adv_action
 
-                # FIXME for now we will just sum the two actions... (assuming same action space)
                 cumul_action = (pr_action + adv_action).detach().cpu().numpy()
                 state, reward, done, trunc, info = env.step(cumul_action)
 

@@ -74,7 +74,7 @@ if __name__ == "__main__":
     if args.exploration_method is None:
         args.exploration_method = args.method
 
-    args.ratio = 10 if args.method == 'pr_mdp' else 1  # FIXME hacky way of setting defaults from the paper
+    args.ratio = 10 if args.method == 'pr_mdp' else 1  # NOTE hacky way of setting defaults from the paper
     args.env_name = load_env_name(args.env_name)
 
     env = NormalizedActions(gym.make(args.env_name))

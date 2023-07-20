@@ -72,14 +72,13 @@ def evaluate(
             # reset environment
             state, _ = env.reset()
             pr_model.new_eval(start_state=state, eval_target=eval_target)
-            adv_model.new_eval(start_state=state, eval_target=eval_target)  # FIXME think about this...
+            adv_model.new_eval(start_state=state, eval_target=eval_target)
 
             # run episode
             for t in range(env_steps):
                 pr_action, _ = pr_model.get_action(state=state)
                 _, adv_action = adv_model.get_action(state=state)
 
-                # FIXME for now we will just sum the two actions... (assuming same action space)
                 if t == 1:
                     print(f"Starting episode {run_idx}. Checking that adversary is active. Adversarial action: ", adv_action)
                 cumul_action = (pr_action + adv_action)

@@ -3,7 +3,7 @@ import torch
 
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
-from .ardt_utils import DecisionTransformerOutput, DTEvalWrapper
+from .ardt_utils import DecisionTransformerOutput, ADTEvalWrapper
 from .ardt_utils import initialise_weights
 
 
@@ -151,7 +151,7 @@ class SimpleRobustDT(DecisionTransformerModel):
             )
         
     def eval(self, **kwargs):
-        return DTEvalWrapper(self)
+        return ADTEvalWrapper(self)
     
     def get_action(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device):
         # NOTE this implementation does not condition on past rewards

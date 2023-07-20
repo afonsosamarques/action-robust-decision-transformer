@@ -97,7 +97,7 @@ if __name__ == "__main__":
     except ConnectionError as e:
         print("Could not connect to HuggingFace; proceeding without, will fail if required.")     
     
-    device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda:0" if torch.cuda.is_available() else "cpu"))
+    device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
     if device == "mps":
         os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
     
@@ -117,8 +117,8 @@ if __name__ == "__main__":
 
         for adv_model_name, adv_model_type, adv_model_path in zip(adv_model_names, adv_model_types, adv_model_paths):
             # NOTE HACK HACK cannot run arrl using mps
-            device = (torch.device('cpu') if device==torch.device('mps') and model_type=='arrl' else device)
-            device = (torch.device('cpu') if device==torch.device('mps') and adv_model_type=='arrl' else device)
+            device = (torch.device('cpu') if device==torch.device('mps') and model_type=='arrl' or model_type=='arrl-sgld' else device)
+            device = (torch.device('cpu') if device==torch.device('mps') and adv_model_type=='arrl' or model_type=='arrl-sgld' else device)
 
             # irrelevant loop if no explicit adversaries, otherwise runs through list of adversaries
             launch_evaluation(

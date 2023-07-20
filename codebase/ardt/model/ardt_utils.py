@@ -192,6 +192,57 @@ class DTEvalWrapper(EvalWrapper):
         self.states = torch.from_numpy(start_state).reshape(1, self.model.config.state_dim).to(device=self.device, dtype=torch.float32)
         # independent
         self.t = 0
+        self.actions = torch.zeros((0, self.model.config.act_dim), device=self.device, dtype=torch.float32)
+        self.rewards = torch.zeros(0, device=self.device, dtype=torch.float32)
+        self.timesteps = torch.tensor(0, device=self.device, dtype=torch.long).reshape(1, 1)
+
+    def get_action(self, **kwargs):
+        if not self.has_started:
+            raise RuntimeError("Must call new_eval before get_action.")
+        self.actions = torch.cat([self.actions, torch.zeros((1, self.model.config.act_dim), device=self.device)], dim=0)
+        self.rewards = torch.cat([self.rewards, torch.zeros(1, device=self.device)])
+
+        pr_action, adv_action = self.model.get_action(
+            self.states,
+            self.actions,
+            self.rewards,
+            self.target_return,
+            self.timesteps,
+            self.device,
+        )
+        return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()
+    
+    def update_history(self, pr_action, adv_action, state, reward, timestep):
+        if not self.has_started:
+            raise RuntimeError("Must call new_eval before get_action.")
+        self.actions[-1] = torch.tensor(pr_action).to(device=self.device)
+        self.rewards[-1] = reward
+
+        cur_state = torch.from_numpy(state.astype(np.float32)).to(device=self.device).reshape(1, self.model.config.state_dim)
+        self.states = torch.cat([self.states, cur_state], dim=0)
+        
+        pred_return = self.target_return[0, -1] - (reward / self.returns_scale)
+        self.target_return = torch.cat([self.target_return, pred_return.reshape(1, 1)], dim=1)
+
+        self.t = timestep
+        self.timesteps = torch.cat([self.timesteps, torch.ones((1, 1), device=self.device, dtype=torch.long) * (self.t + 1)], dim=1)
+
+
+class ADTEvalWrapper(EvalWrapper):
+    def __init__(self, model, **kwargs):
+        super().__init__(model)
+        self.returns_scale = self.model.config.returns_scale if 'returns_scale' in self.model.config.to_dict().keys() else self.model.config.scale
+        self.device = next(model.parameters()).device
+        self.has_started = False
+        self.t = 0
+    
+    def new_eval(self, start_state, eval_target):
+        self.has_started = True
+        # from environment
+        self.target_return = torch.tensor(eval_target/self.returns_scale, device=self.device, dtype=torch.float32).reshape(1, 1)
+        self.states = torch.from_numpy(start_state).reshape(1, self.model.config.state_dim).to(device=self.device, dtype=torch.float32)
+        # independent
+        self.t = 0
         self.pr_actions = torch.zeros((0, self.model.config.pr_act_dim), device=self.device, dtype=torch.float32)
         self.adv_actions = torch.zeros((0, self.model.config.adv_act_dim), device=self.device, dtype=torch.float32)
         self.rewards = torch.zeros(0, device=self.device, dtype=torch.float32)

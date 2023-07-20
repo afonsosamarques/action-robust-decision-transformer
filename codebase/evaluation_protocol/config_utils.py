@@ -70,13 +70,6 @@ def load_arrl_model(path):
 
 def load_arrl_sgld_model(path):
     var_dict = torch.load(f"{path}/ddpg_vars")
-    if 'gamma' not in var_dict:
-        # FIXME temporary for backward compatibility (harmless)
-        var_dict['gamma'] = 0.99
-        var_dict['tau'] = 0.01
-        var_dict['hidden_size'] = 64
-        var_dict['num_inputs'] = 17
-        var_dict['action_space'] = 6
     agent = DDPG_SGLD(beta=var_dict['beta'], epsilon=var_dict['epsilon'], learning_rate=var_dict['learning_rate'], gamma=var_dict['gamma'], 
                       tau=var_dict['tau'], alpha=0,
                       hidden_size_dim0=var_dict['hidden_size_dim0'], hidden_size_dim1=var_dict['hidden_size_dim1'],

@@ -7,7 +7,7 @@ from .ardt_utils import DTEvalWrapper
 
 
 class TrainableDT(DecisionTransformerModel):
-    def __init__(self, config, logger):
+    def __init__(self, config, logger=None):
         super().__init__(config)
         self.logger = logger
         self.step = 0
@@ -21,7 +21,7 @@ class TrainableDT(DecisionTransformerModel):
         output = super().forward(**new_kwargs)
 
         # add the DT loss; applied only to non-padding values in action head
-        action_targets = kwargs["pr_actions"]
+        action_targets = kwargs["actions"]
         attention_mask = kwargs["attention_mask"]
         action_preds = output[1]
         act_dim = action_preds.shape[2]

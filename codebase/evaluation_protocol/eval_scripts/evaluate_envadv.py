@@ -16,19 +16,19 @@ from ..helpers import set_seed_everywhere, find_root_dir, scrappy_print_eval_dic
 def sample_env_params(env):
     mb = env.model.body_mass
     mb = torch.tensor(mb)
-    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.8)
+    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.25)
     mb = gauss.sample()
     env.model.body_mass = np.array(mb)
     
     mb = env.model.opt.gravity
     mb = torch.tensor(mb)
-    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.8)
+    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.25)
     mb = gauss.sample()
     env.model.opt.gravity = np.array(mb)
 
     mb = env.model.geom_friction
     mb = torch.tensor(mb)
-    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.1)
+    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.05)
     mb = gauss.sample()
     env.model.geom_friction = np.array(mb)
 
@@ -83,6 +83,8 @@ def evaluate(
                 if is_adv_eval:
                     env = sample_env_params(env)
                     print(f"Starting episode {run_idx}. Checking that sampling worked. Gravity: ", env.model.opt.gravity)
+                else:
+                    print(f"Starting episode {run_idx}.")
 
                 # set up episode variables
                 episode_return, episode_length = 0, 0

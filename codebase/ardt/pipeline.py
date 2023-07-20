@@ -75,7 +75,7 @@ def train(
         id=model_name,
         tags=[model_name, dataset_name, env_params['env_name'], run_suffix],
         dir=f"{find_root_dir()}",
-        settings=wandb.Settings(_service_wait=600)  # FIXME have to wait for as long as it takes, because cluster is a problem
+        settings=wandb.Settings(_service_wait=600)  # NOTE have to wait for as long as it takes, because cluster connection is a problem
     )
 
     training_args = TrainingArguments(
