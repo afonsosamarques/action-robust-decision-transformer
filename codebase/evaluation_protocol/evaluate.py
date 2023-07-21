@@ -1,3 +1,5 @@
+import argparse
+import datetime
 import os
 import yaml
 
@@ -100,9 +102,14 @@ if __name__ == "__main__":
     device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
     if device == "mps":
         os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
-    
+
+    # load config
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config_name', type=str, required=True, help='Name of yaml configuration file to use.')
+    args = parser.parse_args()
+
     # load and check config
-    with open(f'{find_root_dir()}/run-configs/evaluation.yaml', 'r') as f:
+    with open(f'{find_root_dir()}/run-configs/{args.config_name}.yaml', 'r') as f:
         config = yaml.safe_load(f)
     config = check_evalrun_config(config)
 
@@ -110,6 +117,8 @@ if __name__ == "__main__":
     run_suffix = load_run_suffix(config.run_type)
 
     # perform evaluation
+    print(f"Starting evaluation at... {datetime.datetime.now()}")
+
     for model_name, model_type, model_path in zip(config.trained_model_names, config.trained_model_types, config.trained_model_paths):
         adv_model_names = config.adv_model_names if config.eval_type == 'agent_adv' else [None]
         adv_model_types = config.adv_model_types if config.eval_type == 'agent_adv' else [None]
@@ -140,4 +149,5 @@ if __name__ == "__main__":
                 hf_project=config.hf_project,
             )
 
-    print("\n\n")
+    print("\n========================================================================================================================")
+    print(f"Done at {datetime.datetime.now()}. \n")
