@@ -180,7 +180,6 @@ class StochasticDT(DecisionTransformerModel):
     def forward(
         self,
         is_train=True,
-        incl_entropy=True,
         states=None,
         pr_actions=None,
         adv_actions=None,
