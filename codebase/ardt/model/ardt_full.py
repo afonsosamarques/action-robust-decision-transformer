@@ -30,7 +30,7 @@ class AdversarialDT(DecisionTransformerModel):
             *([torch.nn.Linear(config.hidden_size, 1)] + [BetaParamsSquashFunc()] + [ExpFunc()])
         )
         self.predict_adv_action = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()] if config.action_tanh else []))
+            *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()]))
         )
 
         self.predict_alpha.apply(initialise_weights)
@@ -120,10 +120,9 @@ class AdversarialDT(DecisionTransformerModel):
 
         if is_train:
             # return loss
-            scaled_rtg = (returns_to_go + self.config.max_ep_return) / (self.config.max_ep_return * 2)
-            rtg_log_prob = -rtg_dist.log_prob(scaled_rtg).sum(axis=2)[attention_mask > 0].mean()
-            rtg_entropy = -rtg_dist.entropy().mean()
-            rtg_loss = rtg_log_prob + self.config.lambda1 * rtg_entropy
+            rtg_downscaled = (returns_to_go - self.config.min_ep_return) / (self.config.max_ep_return - self.config.min_ep_return)
+            rtg_log_prob = -rtg_dist.log_prob(rtg_downscaled).sum(axis=2)[attention_mask > 0].mean()
+            rtg_loss = rtg_log_prob
 
             adv_action_loss = 0
             if pred_adv:
@@ -131,22 +130,23 @@ class AdversarialDT(DecisionTransformerModel):
                 adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
                 adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
+            # need to issue predictions to train the SDT on
+            rtg_pred_upscaled = self.config.min_ep_return + rtg_dist.rsample() * (self.config.max_ep_return - self.config.min_ep_return)
+                
             return {"loss": rtg_loss + adv_action_loss, 
-                    "rtg_loss": rtg_loss, 
-                    "rtg_log_prob": rtg_log_prob, 
-                    "rtg_entropy": rtg_entropy, 
+                    "rtg_loss": rtg_loss,
                     "adv_action_loss": adv_action_loss,
                     "alpha": alpha_preds,
                     "epsilon": epsilon_preds,
-                    "rtg_preds": rtg_dist.rsample()}
+                    "rtg_preds": rtg_pred_upscaled}
         else:
             # return predictions
-            rtg_pred_scaled = rtg_dist.mean * (self.config.max_ep_return * 2) - self.config.max_ep_return
+            rtg_pred_upscaled = self.config.min_ep_return + rtg_dist.mean * (self.config.max_ep_return - self.config.min_ep_return)
             if not return_dict:
-                return (rtg_pred_scaled, adv_action_preds)
+                return (rtg_pred_upscaled, adv_action_preds)
 
             return DecisionTransformerOutput(
-                rtg_preds=rtg_pred_scaled,
+                rtg_preds=rtg_pred_upscaled,
                 adv_action_preds=adv_action_preds,
                 # hidden_states=encoder_outputs.hidden_states,
                 # last_hidden_state=encoder_outputs.last_hidden_state,
@@ -172,7 +172,7 @@ class StochasticDT(DecisionTransformerModel):
             *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()] if config.action_tanh else []))
         )
         self.predict_sigma = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdSquashFunc()] + [ExpFunc()])  # keeping it to diag matrix for now
+            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdSquashFunc()] + [ExpFunc()])
         )
 
         self.post_init()

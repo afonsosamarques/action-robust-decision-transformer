@@ -60,10 +60,11 @@ def train(
         lambda1=model_params['lambda1'],
         lambda2=model_params['lambda2'],
         returns_scale=env_params['returns_scale'],
-        max_ep_len=env_params['max_ep_len'],
+        max_ep_len=max(env_params['max_ep_len'], collator.max_ep_len),
         max_obs_len=collator.max_ep_len,
-        max_ep_return=env_params['max_ep_return'],
+        max_ep_return=max(env_params['max_ep_return'], collator.max_ep_return),
         max_obs_return=collator.max_ep_return,
+        min_obs_return=collator.min_ep_return,
         warmup_steps=train_params['warmup_steps'],  # exception: this is used in training but due to HF API it must be in config as well
         log_interval_steps=100,
     )

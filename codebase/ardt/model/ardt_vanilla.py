@@ -27,13 +27,13 @@ class SingleAgentRobustDT(DecisionTransformerModel):
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
         self.predict_mu = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()] if config.action_tanh else []))
+            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()]))
         )
         self.predict_sigma = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdSquashFunc()] + [ExpFunc()])  # keeping it to diag matrix for now
+            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdSquashFunc()] + [ExpFunc()])
         )
         self.predict_adv_action = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()] if config.action_tanh else []))
+            *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()]))
         )
 
         self.predict_mu.apply(initialise_weights)
@@ -45,7 +45,6 @@ class SingleAgentRobustDT(DecisionTransformerModel):
     def forward(
         self,
         is_train=True,
-        pred_adv=None,
         states=None,
         pr_actions=None,
         adv_actions=None,
@@ -122,19 +121,16 @@ class SingleAgentRobustDT(DecisionTransformerModel):
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next adv action given return, state and pr_action
 
         if is_train:
+            # return loss
             self.step += 1
 
-            # return loss
             pr_action_log_prob = -pr_action_dist.log_prob(pr_actions).sum(axis=2)[attention_mask > 0].mean()
             pr_action_entropy = -pr_action_dist.entropy().mean()
             pr_action_loss = pr_action_log_prob + self.config.lambda1 * pr_action_entropy
 
-            pred_adv = pred_adv if pred_adv is not None else (self.step > self.config.warmup_steps)
-            adv_action_loss = torch.tensor(0)
-            if pred_adv:
-                adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
-                adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
-                adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
+            adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
+            adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
+            adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
             dist_params = {}
             for i in range(sigma_preds.shape[2]):
