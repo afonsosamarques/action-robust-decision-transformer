@@ -1,9 +1,9 @@
 #$ -S /bin/bash
 
-#$ -N dt-halfcheetah-nrmdp_train_v4
+#$ -N ardt_simplest-halfcheetah-dataset_combo_v3
 #$ -l gpu=1
 #$ -l tmem=4G
-#$ -l h_rt=6:00:00
+#$ -l h_rt=10:00:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 
@@ -14,4 +14,4 @@ export PATH=$PATH:/share/apps/git-lfs-2.11.0/bin/
 source /home/amarques/envs/ardt-env/bin/activate
 
 nvidia-smi
-python3 -m ardt.pipeline --config_name dt-halfcheetah-nrmdp_train_v4
+python3 -m ardt.pipeline --config_name ardt_simplest-halfcheetah-dataset_combo_v3
