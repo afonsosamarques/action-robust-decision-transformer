@@ -120,7 +120,7 @@ class AdversarialDT(DecisionTransformerModel):
 
         if is_train:
             # return loss
-            rtg_downscaled = (returns_to_go - self.config.min_ep_return) / (self.config.max_ep_return - self.config.min_ep_return)
+            rtg_downscaled = (returns_to_go - self.config.min_obs_return) / (self.config.max_ep_return - self.config.min_obs_return)
             rtg_log_prob = -rtg_dist.log_prob(rtg_downscaled).sum(axis=2)[attention_mask > 0].mean()
             rtg_loss = rtg_log_prob
 
@@ -131,7 +131,7 @@ class AdversarialDT(DecisionTransformerModel):
                 adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
             # need to issue predictions to train the SDT on
-            rtg_pred_upscaled = self.config.min_ep_return + rtg_dist.rsample() * (self.config.max_ep_return - self.config.min_ep_return)
+            rtg_pred_upscaled = self.config.min_obs_return + rtg_dist.rsample() * (self.config.max_ep_return - self.config.min_obs_return)
                 
             return {"loss": rtg_loss + adv_action_loss, 
                     "rtg_loss": rtg_loss,
@@ -141,7 +141,7 @@ class AdversarialDT(DecisionTransformerModel):
                     "rtg_preds": rtg_pred_upscaled}
         else:
             # return predictions
-            rtg_pred_upscaled = self.config.min_ep_return + rtg_dist.mean * (self.config.max_ep_return - self.config.min_ep_return)
+            rtg_pred_upscaled = self.config.min_obs_return + rtg_dist.mean * (self.config.max_ep_return - self.config.min_obs_return)
             if not return_dict:
                 return (rtg_pred_upscaled, adv_action_preds)
 

@@ -163,8 +163,8 @@ def check_pipelinerun_config(config):
     assert pipeline_config.dataset_config.online_policy_name in ['d4rl', 'rarl', 'arrl_prmdp', 'arrl_nrmdp', 'dataset_combo', 'randagent'], "Online policy name needs to be either 'd4rl', 'rarl', 'arrl_prmdp', 'arrl_nrmdp', 'dataset_combo' or 'randagent'."
     assert pipeline_config.dataset_config.dataset_type in ['train', 'test', 'expert', 'mixed'], "Dataset type needs to be either 'train' or 'test' or 'expert' or 'mixed'."
     assert pipeline_config.model_config.agent_type in ['dt', 'ardt-simplest', 'ardt-vanilla', 'ardt-full']
-    assert pipeline_config.admin_config.wandb_project in ['afonsosamarques', 'ARDT-Project'], "Wandb project needs to be either 'afonsosamarques' or 'ARDT-Project'."
-    assert pipeline_config.admin_config.hf_project in ['afonsosamarques', 'ARDT-Project'], "Wandb project needs to be either 'afonsosamarques' or 'ARDT-Project'."
+    assert pipeline_config.admin_config.wandb_project in ['afonsosamarques', 'ARDT-Project', 'ARDT-Internal'], "Wandb project needs to be either 'afonsosamarques' or 'ARDT-Project' or 'ARDT-Internal'."
+    assert pipeline_config.admin_config.hf_project in ['afonsosamarques', 'ARDT-Project', 'ARDT-Internal'], "Wandb project needs to be either 'afonsosamarques' or 'ARDT-Project' or 'ARDT-Internal'."
     assert pipeline_config.admin_config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
     if pipeline_config.evaluation_config.is_eval:
         assert pipeline_config.evaluation_config.eval_type in ['no_adv', 'env_adv', 'agent_adv'], "Evaluation type needs to be either 'no_adv', 'env_adv' or 'agent_adv'."

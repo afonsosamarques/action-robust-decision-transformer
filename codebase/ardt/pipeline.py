@@ -139,7 +139,7 @@ if __name__ == "__main__":
     login(token=HF_WRITE_TOKEN)
     wandb.login(key=WANDB_TOKEN)
     device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
-    if device == "mps":
+    if device == torch.device("mps"):
         os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
     # load config
