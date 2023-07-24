@@ -79,6 +79,7 @@ def train(
         settings=wandb.Settings(_service_wait=600)  # NOTE have to wait for as long as it takes, because cluster connection is a problem
     )
 
+    hub_model_id = hf_project + "/" + model_name if hf_project is not None else model_name
     training_args = TrainingArguments(
         output_dir=f"{find_root_dir()}/agents{run_suffix}/" + model_name,
         remove_unused_columns=False,
@@ -102,7 +103,7 @@ def train(
         report_to="wandb",
         skip_memory_metrics=True,
         run_name=model_name,
-        hub_model_id=model_name,
+        hub_model_id=hub_model_id,
         push_to_hub=True,
     )
 
