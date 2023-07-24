@@ -21,8 +21,8 @@ class TrainableDT(DecisionTransformerModel):
         output = super().forward(**new_kwargs)
 
         # add the DT loss; applied only to non-padding values in action head
-        action_targets = kwargs["actions"]
-        attention_mask = kwargs["attention_mask"]
+        action_targets = new_kwargs["actions"]
+        attention_mask = new_kwargs["attention_mask"]
         action_preds = output[1]
         act_dim = action_preds.shape[2]
         
