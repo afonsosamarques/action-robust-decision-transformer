@@ -2,6 +2,7 @@ import argparse
 import datetime
 import itertools
 import os
+import subprocess
 
 import torch
 import wandb
@@ -43,10 +44,16 @@ def train(
         context_size=model_params['context_size'],
         returns_scale=env_params['returns_scale'],
     )
-    if env_params['max_ep_len'] < 0.95 * collator.max_ep_len or env_params['max_ep_len'] > 1.05 * collator.max_ep_len:
-        print(f"WARNING: config max_ep_len={env_params['max_ep_len']} is not close to observed max_ep_len={collator.max_ep_len}")
-    if env_params['max_ep_return'] > collator.max_ep_return:
-        print(f"WARNING: config max_ep_return={env_params['max_ep_return']} is higher than observed max_ep_return={collator.max_ep_return}")
+
+    max_ep_len = env_params['max_ep_len']
+    if max_ep_len < 0.95 * collator.max_ep_len or max_ep_len > 1.05 * collator.max_ep_len:
+        max_ep_len = collator.max_ep_len
+        print(f"WARNING: config max_ep_len={env_params['max_ep_len']} is not close to observed max_ep_len={collator.max_ep_len}. Defaulting to observed length {max_ep_len}.")
+    
+    env_max_return = env_params['max_ep_return']
+    if env_max_return > collator.max_ep_return:
+        env_max_return = collator.max_ep_return + (env_params['returns_scale'] - collator.max_ep_return % env_params['returns_scale'])
+        print(f"WARNING: config max_ep_return={env_params['max_ep_return']} is higher than observed max_ep_return={collator.max_ep_return}. Defaulting to observed return {env_max_return}.")
     
     # here we store both environment and model parameters
     model_config = DecisionTransformerConfig(
@@ -60,9 +67,9 @@ def train(
         lambda1=model_params['lambda1'],
         lambda2=model_params['lambda2'],
         returns_scale=env_params['returns_scale'],
-        max_ep_len=max(env_params['max_ep_len'], collator.max_ep_len),
+        max_ep_len=max(max_ep_len, collator.max_ep_len),
         max_obs_len=collator.max_ep_len,
-        max_ep_return=max(env_params['max_ep_return'], collator.max_ep_return),
+        max_ep_return=max(env_max_return, collator.max_ep_return),
         max_obs_return=collator.max_ep_return,
         min_obs_return=collator.min_ep_return,
         warmup_steps=train_params['warmup_steps'],  # exception: this is used in training but due to HF API it must be in config as well
@@ -141,7 +148,10 @@ if __name__ == "__main__":
     wandb.login(key=WANDB_TOKEN)
     device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
     if device == torch.device("mps"):
-        os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
+        r = subprocess.run('export PYTORCH_ENABLE_MPS_FALLBACK=1', shell=True)
+        if r.returncode != 0:
+            raise RuntimeError("Could not enable MPS fallback. Exiting process.")
+
 
     # load config
     parser = argparse.ArgumentParser()
