@@ -18,7 +18,7 @@ class DecisionTransformerOutput(ModelOutput):
     hidden_states: torch.FloatTensor = None
     attentions: torch.FloatTensor = None
     last_hidden_state: torch.FloatTensor = None
-
+    
 
 @dataclass
 class DecisionTransformerGymDataCollator:
@@ -45,6 +45,7 @@ class DecisionTransformerGymDataCollator:
         self.context_size = context_size
         self.returns_scale = returns_scale
         self.max_ep_return = max([np.sum(traj["rewards"]) for traj in dataset])
+        self.max_ep_adv_return = max([np.sum(traj["rewards"]) for traj in dataset if not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions']))])
         self.min_ep_return = min([np.sum(traj["rewards"]) for traj in dataset])
         # retrieve lower bounds for actions
         self.pr_act_lb = min(0.0, (int(np.min([np.min(traj["pr_actions"]) for traj in dataset])) - 1) * 5.0)
@@ -55,8 +56,8 @@ class DecisionTransformerGymDataCollator:
         for obs in dataset["observations"]:
             states.extend(obs)
             traj_lens.append(len(obs))
-        traj_lens = np.array(traj_lens)
         states = np.vstack(states)
+        traj_lens = np.array(traj_lens)
         # use stats to produce normalisation constants
         self.state_mean, self.state_std = np.mean(states, axis=0), np.std(states, axis=0) + 1e-8
         self.n_traj = traj_lens.shape[0]
@@ -72,14 +73,21 @@ class DecisionTransformerGymDataCollator:
         )
 
         # a batch of dataset features
-        # FIXME add temperature relabelling for the Full ARDT!
-        s, a_pr, a_adv, r, d, rtg, tsteps, mask = [], [], [], [], [], [], [], []
+        s, a_pr, a_adv, r, d, rtg, rtg_scaled, tsteps, mask = [], [], [], [], [], [], [], [], []
         
         for idx in batch_idx:
             traj = self.dataset[int(idx)]
-            start = random.randint(0, len(traj["rewards"]) - 1)
+
+            # see if trajectory is adversarial, if so get shift
+            shift = 0.0
+            if not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions'])):
+                ret = np.sum(traj["rewards"])
+                ret_percent = (ret - self.min_ep_return) / (self.max_ep_adv_return - self.min_ep_return)
+                scaled_ret = ret_percent * (self.max_ep_return - self.min_ep_return) + self.min_ep_return
+                shift = scaled_ret - ret
 
             # get sequences from the dataset
+            start = random.randint(0, len(traj["rewards"]) - 1)
             s.append(np.array(traj["observations"][start : start + self.context_size]).reshape(1, -1, self.state_dim))
             a_pr.append(np.array(traj["pr_actions"][start : start + self.context_size]).reshape(1, -1, self.pr_act_dim))
             a_adv.append(np.array(traj["adv_actions"][start : start + self.context_size]).reshape(1, -1, self.adv_act_dim))
@@ -88,9 +96,11 @@ class DecisionTransformerGymDataCollator:
 
             tsteps.append(np.arange(start, start + s[-1].shape[1]).reshape(1, -1))
             tsteps[-1][tsteps[-1] >= self.max_ep_len] = self.max_ep_len - 1  # padding cutoff
-
+            
             rewards = np.array(traj["rewards"][start:])
-            rtg.append(np.cumsum(rewards[::-1])[::-1][:self.context_size].reshape(1, -1, 1))
+            rtgs = np.cumsum(rewards[::-1])[::-1][:self.context_size].reshape(1, -1, 1)
+            rtg.append(rtgs)
+            rtg_scaled.append(rtgs + shift)
 
             # normalising and padding; we pad with zeros to the left of the sequence
             # except for actions, where we need to pad with some negative number well outside of domain
@@ -99,34 +109,33 @@ class DecisionTransformerGymDataCollator:
             
             s[-1] = (s[-1] - self.state_mean) / self.state_std
             s[-1] = np.concatenate(
-                [np.zeros((1, padlen, self.state_dim)) * 1.0, s[-1]], 
-                axis=1,
+                [np.zeros((1, padlen, self.state_dim)) * 1.0, s[-1]], axis=1,
             )
             
             a_pr[-1] = np.concatenate(
-                [np.ones((1, padlen, self.pr_act_dim)) * self.pr_act_lb, a_pr[-1]],
-                axis=1,
+                [np.ones((1, padlen, self.pr_act_dim)) * self.pr_act_lb, a_pr[-1]], axis=1,
             )
 
             a_adv[-1] = np.concatenate(
-                [np.ones((1, padlen, self.adv_act_dim)) * self.adv_act_lb, a_adv[-1]],
-                axis=1,
+                [np.ones((1, padlen, self.adv_act_dim)) * self.adv_act_lb, a_adv[-1]], axis=1,
             )
 
             r[-1] = np.concatenate(
-                [np.zeros((1, padlen, 1)) * 1.0, r[-1]], 
-                axis=1,
+                [np.zeros((1, padlen, 1)) * 1.0, r[-1]], axis=1,
             )
 
             d[-1] = np.concatenate(
-                [np.ones((1, padlen)) * 2.0, d[-1]], 
-                axis=1,
+                [np.ones((1, padlen)) * 2.0, d[-1]], axis=1,
             )
 
             rtg[-1] /= self.returns_scale
             rtg[-1] = np.concatenate(
-                [np.zeros((1, padlen, 1)) * 1.0, rtg[-1]], 
-                axis=1,
+                [np.zeros((1, padlen, 1)) * 1.0, rtg[-1]], axis=1,
+            )
+
+            rtg_scaled[-1] /= self.returns_scale
+            rtg_scaled[-1] = np.concatenate(
+                [np.zeros((1, padlen, 1)) * 1.0, rtg_scaled[-1]], axis=1,
             ) 
 
             tsteps[-1] = np.concatenate([np.zeros((1, padlen)), tsteps[-1]], axis=1)
@@ -141,6 +150,7 @@ class DecisionTransformerGymDataCollator:
         r = torch.from_numpy(np.concatenate(r, axis=0)).float()
         d = torch.from_numpy(np.concatenate(d, axis=0))
         rtg = torch.from_numpy(np.concatenate(rtg, axis=0)).float()
+        rtg_scaled = torch.from_numpy(np.concatenate(rtg_scaled, axis=0)).float()
         tsteps = torch.from_numpy(np.concatenate(tsteps, axis=0)).long()
         mask = torch.from_numpy(np.concatenate(mask, axis=0)).float()
 
@@ -150,6 +160,7 @@ class DecisionTransformerGymDataCollator:
             "adv_actions": a_adv,
             "rewards": r,
             "returns_to_go": rtg,
+            "returns_to_go_scaled": rtg_scaled,
             "timesteps": tsteps,
             "attention_mask": mask,
         }

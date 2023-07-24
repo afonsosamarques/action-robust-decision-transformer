@@ -48,6 +48,7 @@ class AdversarialDT(DecisionTransformerModel):
         adv_actions=None,
         rewards=None,
         returns_to_go=None,
+        returns_to_go_scaled=None,
         timesteps=None,
         attention_mask=None,
         output_hidden_states=None,
@@ -71,7 +72,7 @@ class AdversarialDT(DecisionTransformerModel):
         state_embeddings = self.embed_state(states)
         pr_action_embeddings = self.embed_pr_action(pr_actions)
         adv_action_embeddings = self.embed_adv_action(adv_actions)
-        returns_embeddings = self.embed_return(returns_to_go)
+        returns_embeddings = self.embed_return(returns_to_go_scaled)
         time_embeddings = self.embed_timestep(timesteps)
 
         # time embeddings are treated similar to positional embeddings
@@ -294,6 +295,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
         adv_actions=None,
         rewards=None,
         returns_to_go=None,
+        returns_to_go_scaled=None,
         timesteps=None,
         attention_mask=None,
         output_hidden_states=None,
@@ -315,6 +317,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 adv_actions=adv_actions,
                 rewards=rewards,
                 returns_to_go=returns_to_go,
+                returns_to_go_scaled=(returns_to_go if returns_to_go_scaled is None else returns_to_go_scaled),
                 timesteps=timesteps,
                 attention_mask=attention_mask,
                 output_hidden_states=output_hidden_states,
