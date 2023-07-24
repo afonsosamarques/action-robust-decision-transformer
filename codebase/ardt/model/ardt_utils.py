@@ -72,6 +72,7 @@ class DecisionTransformerGymDataCollator:
         )
 
         # a batch of dataset features
+        # FIXME add temperature relabelling for the Full ARDT!
         s, a_pr, a_adv, r, d, rtg, tsteps, mask = [], [], [], [], [], [], [], []
         
         for idx in batch_idx:
