@@ -8,6 +8,8 @@ trained-models*/
 eval-outputs*/
 env-sims*/
 wandb*/
+run-configs-store/
+eval_store/
 access_tokens.py
 private_keys.py
 update_packages.sh
