@@ -12,44 +12,38 @@ class TrainableDT(DecisionTransformerModel):
         self.logger = logger
         self.step = 0
 
-    def forward(self, **kwargs):
+    def forward(self, is_train=True, returns_to_go_scaled=None, **kwargs):
         new_kwargs = kwargs.copy()
         if "pr_actions" in new_kwargs:
             # change to be able to utilise the default code
             new_kwargs["actions"] = new_kwargs.pop("pr_actions")
             new_kwargs.pop("adv_actions")
-        output = super().forward(**new_kwargs)
-
-        # add the DT loss; applied only to non-padding values in action head
-        action_targets = new_kwargs["actions"]
-        attention_mask = new_kwargs["attention_mask"]
-        action_preds = output[1]
-        act_dim = action_preds.shape[2]
         
-        action_preds = action_preds.reshape(-1, act_dim)[attention_mask.reshape(-1) > 0]
-        action_targets = action_targets.reshape(-1, act_dim)[attention_mask.reshape(-1) > 0]
+        if is_train:
+            # add the DT loss; applied only to non-padding values in action head
+            self.step += 1
 
-        self.step += 1
-        loss = torch.mean((action_preds - action_targets) ** 2)
+            attention_mask = new_kwargs["attention_mask"]
+            output = super().forward(**new_kwargs)
+            
+            action_preds = output[1].reshape(-1, self.config.act_dim)[attention_mask.reshape(-1) > 0]
+            action_targets = new_kwargs["actions"].reshape(-1, self.config.act_dim)[attention_mask.reshape(-1) > 0]
+            
+            loss = torch.mean((action_preds - action_targets) ** 2)
 
-        if self.logger is not None and (self.step == 0 or self.step % self.config.log_interval_steps == 0):
-            self.logger.add_entry(
-                step=self.step,
-                hyperparams=None,
-                tr_losses={"loss": loss},
-                dist_params=None,
-                log=True
-            )
+            if self.logger is not None and (self.step == 0 or self.step % self.config.log_interval_steps == 0):
+                self.logger.add_entry(
+                    step=self.step,
+                    hyperparams=None,
+                    tr_losses={"loss": loss},
+                    dist_params=None,
+                    log=True
+                )
 
-        return {"loss": loss}
-
-    def original_forward(self, **kwargs):
-        new_kwargs = kwargs.copy()
-        if "pr_actions" in new_kwargs:
-            # change to be able to utilise the default code
-            new_kwargs["actions"] = new_kwargs.pop("pr_actions")
-            new_kwargs.pop("adv_actions")
-        return super().forward(**new_kwargs)
+            return {"loss": loss}
+        else:
+            # simply return predictions
+            return super().forward(**new_kwargs)
     
     def eval(self, **kwargs):
         return DTEvalWrapper(self)
@@ -84,7 +78,8 @@ class TrainableDT(DecisionTransformerModel):
         timesteps = torch.cat([torch.zeros((1, padlen), dtype=torch.long, device=device), timesteps], dim=1)
 
         # forward pass
-        _, action_preds, _ = model.original_forward(
+        _, action_preds, _ = model.forward(
+            is_train=False,
             states=states,
             actions=actions,
             rewards=rewards,

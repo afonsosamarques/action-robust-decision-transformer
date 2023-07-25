@@ -49,7 +49,7 @@ class DecisionTransformerGymDataCollator:
         self.min_ep_return = min([np.sum(traj["rewards"]) for traj in dataset])
         # retrieve lower bounds for actions
         self.pr_act_lb = min(0.0, (int(np.min([np.min(traj["pr_actions"]) for traj in dataset])) - 1) * 5.0)
-        self.adv_act_lb = min(0.0, (int(np.min(np.min([traj["adv_actions"] for traj in dataset]))) - 1) * 5.0)
+        self.adv_act_lb = min(0.0, (int(np.min([np.min(traj["adv_actions"]) for traj in dataset])) - 1) * 5.0)
         # collect some statistics about the dataset
         states = []
         traj_lens = []

@@ -2,17 +2,18 @@
 datasets/
 datasets-raw/
 datasets-to-push/
-env-sims*/
 agents*/
+models*/
+trained-models*/
 eval-outputs*/
-wandb/
-wandb-json/
+env-sims*/
+wandb*/
 access_tokens.py
 private_keys.py
+update_packages.sh
+cscluster-run-scripts-store/
 screenshots/
-models/
 info-clusters/
-trained-models/
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files

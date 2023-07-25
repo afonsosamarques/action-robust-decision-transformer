@@ -11,7 +11,7 @@ dataset_config:
   dataset_version: "v1"  # fill only if there is any type of versioning to the dataset being considered, otherwise leave blank
 
 model_config:
-  agent_type: "ardt-full"  # dt, ardt-simplest, ardt-vanilla, ardt-full
+  agent_type: "dt"  # dt, ardt-simplest, ardt-vanilla, ardt-full
   context_size: [20]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
   lambda1: [1.0]  # these are for different parameter combinations to try!!
   lambda2: [500.0]  # these are for different parameter combinations to try!

@@ -45,6 +45,7 @@ class SimpleRobustDT(DecisionTransformerModel):
         adv_actions=None,
         rewards=None,
         returns_to_go=None,
+        returns_to_go_scaled=None,
         timesteps=None,
         attention_mask=None,
         output_hidden_states=None,

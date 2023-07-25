@@ -91,21 +91,21 @@ def load_arrl_sgld_model(path):
 
 def load_model(model_type, model_to_use, model_path):
     if model_type == "dt":
-        config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
+        config = DecisionTransformerConfig.from_pretrained(model_path)
         model = TrainableDT(config)
-        return model.from_pretrained(model_path, use_auth_token=True), False
+        return model.from_pretrained(model_path), False
     elif model_type == "ardt-simplest" or model_type == "ardt_simplest":
-        config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
+        config = DecisionTransformerConfig.from_pretrained(model_path)
         model = SimpleRobustDT(config)
-        return model.from_pretrained(model_path, use_auth_token=True), True
+        return model.from_pretrained(model_path), True
     elif model_type == "ardt-vanilla" or model_type == "ardt_vanilla":
-        config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
+        config = DecisionTransformerConfig.from_pretrained(model_path)
         model = SingleAgentRobustDT(config)
-        return model.from_pretrained(model_path, use_auth_token=True), True
+        return model.from_pretrained(model_path), True
     elif model_type == "ardt-full" or model_type == "ardt_full":
-        config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
+        config = DecisionTransformerConfig.from_pretrained(model_path)
         model = TwoAgentRobustDT(config)
-        return model.from_pretrained(model_path, use_auth_token=True), True
+        return model.from_pretrained(model_path), True
     elif model_type == "arrl":
         return load_arrl_model(model_path), True
     elif model_type == "arrl-sgld":

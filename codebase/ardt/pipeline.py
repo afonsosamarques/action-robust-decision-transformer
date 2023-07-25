@@ -53,7 +53,7 @@ def train(
     env_max_return = env_params['max_ep_return']
     if env_max_return > collator.max_ep_return:
         env_max_return = collator.max_ep_return + (env_params['returns_scale'] - collator.max_ep_return % env_params['returns_scale'])
-        print(f"WARNING: config max_ep_return={env_params['max_ep_return']} is higher than observed max_ep_return={collator.max_ep_return}. Defaulting to observed return {env_max_return}.")
+        print(f"WARNING: config max_ep_return={env_params['max_ep_return']} is higher than observed max_ep_return={collator.max_ep_return}. Defaulting to max episode return {env_max_return}.")
     
     # here we store both environment and model parameters
     model_config = DecisionTransformerConfig(
