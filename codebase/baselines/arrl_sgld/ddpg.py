@@ -13,7 +13,7 @@ from .network import Critic, Actor
 from .utils import RunningMeanStd
 from .replay_memory import ReplayMemory, Transition
 
-from evaluation_protocol.eval_utils import EvalWrapper
+from evaluation_protocol.helpers import EvalWrapper
 
 
 def soft_update(target, source, tau):

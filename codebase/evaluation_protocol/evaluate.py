@@ -2,16 +2,14 @@ import argparse
 import datetime
 import os
 import yaml
-
-import gymnasium as gym
-import numpy as np
 import torch
 
 from requests.exceptions import ConnectionError, HTTPError
 
 from huggingface_hub import login
 
-from .eval_scripts import evaluate_envadv, evaluate_agentadv
+from .evaluate_envadv import evaluate as evaluate_envadv
+from .evaluate_agentadv import evaluate as evaluate_agentadv
 from .config_utils import check_evalrun_config, load_run_suffix, load_env_name
 from .helpers import find_root_dir
 
@@ -37,7 +35,7 @@ def launch_evaluation(
         hf_project=None,
     ):
     if eval_type == 'no_adv':
-        return evaluate_envadv.evaluate(
+        return evaluate_envadv(
             model_name=pr_model_name,
             model_type=pr_model_type,
             env_name=env_name,
@@ -53,7 +51,7 @@ def launch_evaluation(
             hf_project=hf_project
         )
     elif eval_type == 'env_adv':
-        return evaluate_envadv.evaluate(
+        return evaluate_envadv(
             model_name=pr_model_name,
             model_type=pr_model_type,
             env_name=env_name,
@@ -70,7 +68,7 @@ def launch_evaluation(
         )
     elif eval_type == 'agent_adv':
         assert adv_model_name is not None and adv_model_type is not None, "Must provide adversarial model name and type for agent_adv evaluation."
-        return evaluate_agentadv.evaluate(
+        return evaluate_agentadv(
             pr_model_name=pr_model_name,
             pr_model_type=pr_model_type,
             pr_model_path=model_path,

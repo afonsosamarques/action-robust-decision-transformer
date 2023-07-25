@@ -2,7 +2,6 @@ import datetime
 
 from dataclasses import dataclass
 from pydantic import BaseModel, Field
-from transformers import DecisionTransformerConfig
 
 from ..model.ardt_simplest import SimpleRobustDT
 from ..model.ardt_vanilla import SingleAgentRobustDT
@@ -12,7 +11,7 @@ from ..model.trainable_dt import TrainableDT
 from .helpers import find_root_dir
 
 
-############################ Common ############################
+##########################################################################
 def load_run_suffix(run_type):
     if run_type == "core":
         return ''
@@ -35,57 +34,32 @@ def load_env_name(env_type):
         raise Exception(f"Environment {env_type} not available.")
     
 
-############################ Evaluation Script ############################
-class EvaluationRunConfig(BaseModel):
-    env_type: str = Field(...)
-    run_type: str = Field(...)
-    trained_model_names: list[str] = Field(...)
-    trained_model_types: list[str] = Field(...)
-    adv_model_names: list[str] = Field(...)
-    adv_model_types: list[str] = Field(...)
-    eval_type: str = Field(...)
-    eval_target_return: int = Field(...)
-    eval_iters: int = Field(...)
-    hf_project: str = Field(...)
-
-
-def check_evalrun_config(config):
-    config = EvaluationRunConfig(**config)
-    assert config.eval_type in ['no_adv', 'env_adv', 'agent_adv'], "Evaluation type needs to be either 'no_adv', 'env_adv' or 'agent_adv'."
-    assert len(config.trained_model_names) == len(config.trained_model_types), "There need to be as many model names as model types."
-    if config.eval_type == 'agent_adv':
-        assert len(config.adv_model_names) > 0, "There need to be at least one adversarial model."
-        assert len(config.adv_model_names) == len(config.adv_model_types), "There need to be as many adversarial model names as adversarial model types."
-    assert all([mt in ['dt', 'ardt-simplest', 'ardt_simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full'] for mt in config.trained_model_types]), "Model types need to be either 'dt' or 'ardt-vanilla' or 'ardt-full."
-    assert config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
-    assert config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
-    assert config.hf_project in ['afonsosamarques', 'ARDT-Project'], "HF project needs to be either 'afonsosamarques' or 'ARDT-Project'."
-    return config
-
-
-def load_model(model_type, model_to_use, hf_project="afonsosamarques", model_path_local=None):
-    model_path = model_path_local if model_path_local is not None else f"{hf_project}/{model_to_use}"
-    if model_type == "dt":
-        config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
-        model = TrainableDT(config)
-        return model.from_pretrained(model_path, use_auth_token=True), False
-    elif model_type == "ardt-simplest" or model_type == "ardt_simplest":
-        config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
-        model = SimpleRobustDT(config)
-        return model.from_pretrained(model_path, use_auth_token=True), True
-    elif model_type == "ardt-vanilla" or model_type == "ardt_vanilla":
-        config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
-        model = SingleAgentRobustDT(config)
-        return model.from_pretrained(model_path, use_auth_token=True), True
-    elif model_type == "ardt-full" or model_type == "ardt_full":
-        config = DecisionTransformerConfig.from_pretrained(model_path, use_auth_token=True)
-        model = TwoAgentRobustDT(config)
-        return model.from_pretrained(model_path, use_auth_token=True), True
+def load_agent(agent_type):
+    if agent_type == "dt":
+        return TrainableDT
+    elif agent_type == "ardt-simplest" or agent_type == "ardt_simplest":
+        return SimpleRobustDT
+    elif agent_type == "ardt-vanilla" or agent_type == "ardt_vanilla":
+        return SingleAgentRobustDT
+    elif agent_type == "ardt-full" or agent_type == "ardt_full":
+        return TwoAgentRobustDT
     else:
-        raise Exception(f"Model {model_to_use} of type {model_type} not available.")
+        raise Exception(f"Agent type {agent_type} not available.")
 
 
-############################ Pipeline Script ############################
+def build_dataset_path(dataset_config, env_name, is_local=True, hf_project="afonsosamarques"):
+    dataset_dir = find_root_dir() + "/datasets" if is_local else f"{hf_project}"
+    dataset_path = f"{dataset_dir}/{dataset_config.online_policy_name}_{dataset_config.dataset_type}_{env_name}"
+    dataset_path += f"_{dataset_config.dataset_version}" if dataset_config.dataset_version != '' else ''
+    return dataset_path, dataset_path.split('/')[-1]
+
+
+def build_model_name(model_type, dataset_name):
+    datetime_encoding = datetime.datetime.now().strftime("%d%m_%H%M")
+    return f"{model_type}-{dataset_name}-{datetime_encoding}"
+
+
+##########################################################################
 class EnvironmentConfig(BaseModel):
     env_type: str = Field(...)
     max_ep_len: int = Field(...)
@@ -172,28 +146,3 @@ def check_pipelinerun_config(config):
             assert len(pipeline_config.evaluation_config.adv_model_names) > 0, "There need to be at least one adversarial model."
             assert len(pipeline_config.evaluation_config.adv_model_names) == len(pipeline_config.evaluation_config.adv_model_types), "There need to be as many adversarial model names as adversarial model types."
     return pipeline_config
-
-
-def load_agent(agent_type):
-    if agent_type == "dt":
-        return TrainableDT
-    elif agent_type == "ardt-simplest" or agent_type == "ardt_simplest":
-        return SimpleRobustDT
-    elif agent_type == "ardt-vanilla" or agent_type == "ardt_vanilla":
-        return SingleAgentRobustDT
-    elif agent_type == "ardt-full" or agent_type == "ardt_full":
-        return TwoAgentRobustDT
-    else:
-        raise Exception(f"Agent type {agent_type} not available.")
-
-
-def build_dataset_path(dataset_config, env_name, is_local=True, hf_project="afonsosamarques"):
-    dataset_dir = find_root_dir() + "/datasets" if is_local else f"{hf_project}"
-    dataset_path = f"{dataset_dir}/{dataset_config.online_policy_name}_{dataset_config.dataset_type}_{env_name}"
-    dataset_path += f"_{dataset_config.dataset_version}" if dataset_config.dataset_version != '' else ''
-    return dataset_path, dataset_path.split('/')[-1]
-
-
-def build_model_name(model_type, dataset_name):
-    datetime_encoding = datetime.datetime.now().strftime("%d%m_%H%M")
-    return f"{model_type}-{dataset_name}-{datetime_encoding}"

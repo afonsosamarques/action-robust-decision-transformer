@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from evaluation_protocol.eval_utils import EvalWrapper
+from evaluation_protocol.helpers import EvalWrapper
 
 
 class RandomAgentWrapper(EvalWrapper):

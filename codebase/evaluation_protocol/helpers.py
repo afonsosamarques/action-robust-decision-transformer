@@ -29,3 +29,17 @@ def scrappy_print_eval_dict(model_name, eval_dict, other_model_name=None):
     print(f"Initial target returns | Avg: {np.round(np.mean(eval_dict['init_target_return']), 4)} | Std: {np.round(np.std(eval_dict['init_target_return']), 4)} | Min: {np.round(np.min(eval_dict['init_target_return']), 4)} | Median: {np.round(np.median(eval_dict['init_target_return']), 4)} | Max: {np.round(np.max(eval_dict['init_target_return']), 4)}")
     print(f"Episode lengths | Avg: {np.round(np.mean(eval_dict['ep_length']), 4)} | Std: {np.round(np.std(eval_dict['ep_length']), 4)} | Min: {np.round(np.min(eval_dict['ep_length']), 4)} | Median: {np.round(np.median(eval_dict['ep_length']), 4)} | Max: {np.round(np.max(eval_dict['ep_length']), 4)}")
     print(f"Episode returns | Avg: {np.round(np.mean(eval_dict['ep_return']), 4)} | Std: {np.round(np.std(eval_dict['ep_return']), 4)} | Min: {np.round(np.min(eval_dict['ep_return']), 4)} | Median: {np.round(np.median(eval_dict['ep_return']), 4)} | Max: {np.round(np.max(eval_dict['ep_return']), 4)}")
+
+
+class EvalWrapper:
+    def __init__(self, model):
+        self.model = model
+    
+    def new_eval(self, *args, **kwargs):
+        pass
+
+    def get_action(self, *args, **kwargs):
+        return self.model.get_action(*args, **kwargs)
+    
+    def update_history(self, *args, **kwargs):
+        pass

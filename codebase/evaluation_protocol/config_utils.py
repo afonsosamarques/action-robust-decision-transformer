@@ -18,7 +18,7 @@ from baselines.non_adv.model_wrapper import SBEvalWrapper
 from baselines.all_random.random_agent import RandomAgent, RandomAgentWrapper
 
 
-############################ Common ############################
+##########################################################################
 def load_run_suffix(run_type):
     if run_type == "core":
         return ''
@@ -135,8 +135,7 @@ def build_model_name(model_type, env_type, dataset_name):
     return f"{model_type}-{env_type}-{dataset_name}-{datetime_encoding}"
 
 
-
-############################ Evaluation Script ############################
+##########################################################################
 class EvaluationRunConfig(BaseModel):
     env_type: str = Field(...)
     run_type: str = Field(...)

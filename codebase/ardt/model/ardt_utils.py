@@ -6,7 +6,7 @@ import torch
 from dataclasses import dataclass
 from transformers.utils import ModelOutput
 
-from evaluation_protocol.eval_utils import EvalWrapper
+from evaluation_protocol.helpers import EvalWrapper
 
 
 @dataclass

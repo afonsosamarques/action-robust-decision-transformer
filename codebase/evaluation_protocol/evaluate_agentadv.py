@@ -8,8 +8,8 @@ import torch
 from collections import defaultdict
 from requests.exceptions import HTTPError
 
-from ..config_utils import load_model
-from ..helpers import set_seed_everywhere, find_root_dir, scrappy_print_eval_dict
+from .config_utils import load_model
+from .helpers import set_seed_everywhere, find_root_dir, scrappy_print_eval_dict
 
 
 def evaluate(

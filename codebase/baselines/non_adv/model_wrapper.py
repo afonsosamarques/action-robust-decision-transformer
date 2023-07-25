@@ -1,6 +1,6 @@
 import torch
 
-from evaluation_protocol.eval_utils import EvalWrapper
+from evaluation_protocol.helpers import EvalWrapper
 
 
 class SBEvalWrapper(EvalWrapper):
