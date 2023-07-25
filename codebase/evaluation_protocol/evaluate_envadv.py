@@ -45,10 +45,11 @@ def evaluate(
         eval_target,
         is_adv_eval=False,
         run_suffix='',
+        record_data=False,
         verbose=False,
-        device=torch.device('cpu'),
         model_path=None,
         hf_project=None,
+        device=torch.device('cpu'),
     ):
     # linked to mujoco exception explained below
     warnings.filterwarnings('error')

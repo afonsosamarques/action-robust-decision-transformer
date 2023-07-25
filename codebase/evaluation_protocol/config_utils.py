@@ -123,8 +123,8 @@ def load_model(model_type, model_to_use, model_path):
     elif model_type == "random" or model_type == "randagent":
         # really we could just pass in the action space, but this is more similar to the rest of it
         # just need a json file with the action space of the given environment we are evaluating on
-        with open(model_path, 'rb'):
-            model_params = json.load(model_path)
+        with open(model_path, 'rb') as f:
+            model_params = json.load(f)
         return RandomAgentWrapper(RandomAgent(model_params['action_space'])), True
     else:
         raise Exception(f"Model {model_to_use} of type {model_type} not available.")

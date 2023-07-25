@@ -30,9 +30,10 @@ def launch_evaluation(
         adv_model_type=None,
         adv_model_path=None,
         run_suffix='',
+        record_data=False,
         verbose=False,
-        device=torch.device('cpu'),
         hf_project=None,
+        device=torch.device('cpu'),
     ):
     if eval_type == 'no_adv':
         return evaluate_envadv(
@@ -45,10 +46,11 @@ def launch_evaluation(
             eval_target=eval_target,
             is_adv_eval=False,
             run_suffix=run_suffix,
+            record_data=record_data,
             verbose=verbose,
-            device=device,
             model_path=model_path,
-            hf_project=hf_project
+            hf_project=hf_project,
+            device=device,
         )
     elif eval_type == 'env_adv':
         return evaluate_envadv(
@@ -61,10 +63,11 @@ def launch_evaluation(
             eval_target=eval_target,
             is_adv_eval=True,
             run_suffix=run_suffix,
+            record_data=record_data,
             verbose=verbose,
-            device=device,
             model_path=model_path,
-            hf_project=hf_project
+            hf_project=hf_project,
+            device=device
         )
     elif eval_type == 'agent_adv':
         assert adv_model_name is not None and adv_model_type is not None, "Must provide adversarial model name and type for agent_adv evaluation."
@@ -81,9 +84,10 @@ def launch_evaluation(
             eval_iters=eval_iters,
             eval_target=eval_target,
             run_suffix=run_suffix,
+            record_data=record_data,
             verbose=verbose,
+            hf_project=hf_project,
             device=device,
-            hf_project=hf_project
         )
     
 
@@ -104,6 +108,8 @@ if __name__ == "__main__":
     # load config
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_name', type=str, required=True, help='Name of yaml configuration file to use.')
+    parser.add_argument('--record_data', action='store_true', help='Whether to record evaluation data in case of two-player game.')
+    parser.add_argument('--not_verbose', action='store_true', help='Whether to keep tack of evaluation procedure.')
     args = parser.parse_args()
 
     # load and check config
@@ -140,11 +146,12 @@ if __name__ == "__main__":
                 adv_model_name=adv_model_name,
                 adv_model_type=adv_model_type,
                 run_suffix=run_suffix,
-                verbose=True,
-                device=device,
+                record_data=args.record_data,
+                verbose=(not args.not_verbose),
                 model_path=find_root_dir()[:-len('evaluation_protocol')] + model_path if model_path != 'hf' else config.hf_project + '/' + model_name,
                 adv_model_path=find_root_dir()[:-len('evaluation_protocol')] + adv_model_path if adv_model_path != 'hf' else config.hf_project + '/' + adv_model_name,
                 hf_project=config.hf_project,
+                device=device,
             )
 
     print("\n========================================================================================================================")
