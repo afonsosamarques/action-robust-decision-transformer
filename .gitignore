@@ -13,7 +13,7 @@ private_keys.py
 update_packages.sh
 cscluster-run-scripts-store/
 screenshots/
-info-clusters/
+all-info-clusters/
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files
