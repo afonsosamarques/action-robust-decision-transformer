@@ -2,8 +2,8 @@
 
 #$ -N ardt_full-halfcheetah-dataset_combo_v2
 #$ -l gpu=1
-#$ -l tmem=8G
-#$ -l h_rt=40:00:00
+#$ -l tmem=6G
+#$ -l h_rt=36:00:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 

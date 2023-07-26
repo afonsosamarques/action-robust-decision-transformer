@@ -3,7 +3,7 @@
 #$ -N TestRun
 #$ -l gpu=true
 #$ -l tmem=4G
-#$ -l h_rt=01:00:00
+#$ -l h_rt=00:05:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 

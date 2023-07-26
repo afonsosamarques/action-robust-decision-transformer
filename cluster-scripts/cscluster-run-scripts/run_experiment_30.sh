@@ -3,7 +3,7 @@
 #$ -N dt-halfcheetah-dataset_combo_v10
 #$ -l gpu=1
 #$ -l tmem=4G
-#$ -l h_rt=5:00:00
+#$ -l h_rt=5:15:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 
