@@ -12,7 +12,7 @@ from datasets import load_dataset, load_from_disk
 from huggingface_hub import login
 from transformers import DecisionTransformerConfig, Trainer, TrainingArguments
 
-from .eval_store.evaluate import launch_evaluation
+from evaluation_protocol.evaluate import launch_evaluation
 from .model.ardt_utils import DecisionTransformerGymDataCollator
 from .utils.config_utils import check_pipelinerun_config, load_run_suffix, load_env_name, load_agent, build_dataset_path, build_model_name
 from .utils.helpers import find_root_dir
