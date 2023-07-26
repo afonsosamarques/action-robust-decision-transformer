@@ -134,7 +134,7 @@ def check_pipelinerun_config(config):
         'admin_config': admin_config
     })
     assert pipeline_config.environment_config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
-    assert pipeline_config.dataset_config.online_policy_name in ['d4rl', 'rarl', 'arrl_prmdp', 'arrl_nrmdp', 'dataset_combo', 'randagent'], "Online policy name needs to be either 'd4rl', 'rarl', 'arrl_prmdp', 'arrl_nrmdp', 'dataset_combo' or 'randagent'."
+    assert pipeline_config.dataset_config.online_policy_name in ['d4rl', 'rarl', 'arrl_prmdp', 'arrl_nrmdp', 'dataset_combo', 'randagent', 'ppo', 'trpo'], "Online policy name needs to be either 'd4rl', 'rarl', 'arrl_prmdp', 'arrl_nrmdp', 'dataset_combo' or 'randagent'."
     assert pipeline_config.dataset_config.dataset_type in ['train', 'test', 'expert', 'mixed'], "Dataset type needs to be either 'train' or 'test' or 'expert' or 'mixed'."
     assert pipeline_config.model_config.agent_type in ['dt', 'ardt-simplest', 'ardt-vanilla', 'ardt-full']
     assert pipeline_config.admin_config.wandb_project in ['afonsosamarques', 'ARDT-Project', 'ARDT-Internal'], "Wandb project needs to be either 'afonsosamarques' or 'ARDT-Project' or 'ARDT-Internal'."

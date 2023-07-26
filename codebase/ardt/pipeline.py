@@ -171,7 +171,7 @@ if __name__ == "__main__":
     run_suffix = load_run_suffix(admin_config.run_type)
     
     dataset_path, dataset_name = build_dataset_path(dataset_config, env_config.env_type, is_local=dataset_config.is_local, hf_project=admin_config.hf_project)
-    dataset = load_from_disk(dataset_path) if dataset_config.is_local else load_dataset(dataset_path)
+    dataset = load_from_disk(dataset_path) if dataset_config.is_local else load_dataset(dataset_path, split='train')
 
     # retrieving (static) environment parameters
     env_params = {
