@@ -98,8 +98,6 @@ def train(
         warmup_steps=train_params['warmup_steps'],
         max_grad_norm=train_params['max_grad_norm'],
         dataloader_num_workers=(2 if os.cpu_count() > 5 else 0),
-        use_mps_device=(True if torch.backends.mps.is_available() else False),
-        no_cuda=(True if device==torch.device('cpu') else False),
         data_seed=33,
         disable_tqdm=False,
         log_level="error",
@@ -151,7 +149,6 @@ if __name__ == "__main__":
         r = subprocess.run('export PYTORCH_ENABLE_MPS_FALLBACK=1', shell=True)
         if r.returncode != 0:
             raise RuntimeError("Could not enable MPS fallback. Exiting process.")
-
 
     # load config
     parser = argparse.ArgumentParser()

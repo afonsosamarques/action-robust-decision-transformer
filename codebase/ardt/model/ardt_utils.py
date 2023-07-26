@@ -45,7 +45,9 @@ class DecisionTransformerGymDataCollator:
         self.context_size = context_size
         self.returns_scale = returns_scale
         self.max_ep_return = max([np.sum(traj["rewards"]) for traj in dataset])
-        self.max_ep_adv_return = max([np.sum(traj["rewards"]) for traj in dataset if not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions']))])
+        self.max_ep_adv_return = max([-10e10] + [np.sum(traj["rewards"]) for traj in dataset if not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions']))])
+        if self.max_ep_adv_return == -10e10:
+            self.max_ep_adv_return = self.max_ep_return
         self.min_ep_return = min([np.sum(traj["rewards"]) for traj in dataset])
         # retrieve lower bounds for actions
         self.pr_act_lb = min(0.0, (int(np.min([np.min(traj["pr_actions"]) for traj in dataset])) - 1) * 5.0)
