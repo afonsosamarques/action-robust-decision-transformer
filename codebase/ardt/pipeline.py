@@ -35,7 +35,7 @@ def train(
         device=torch.device('cpu'),
     ):
     print("============================================================================================================")
-    print(f"\nTraining {model_name} on dataset {dataset_name} on device {device}. Starting at {datetime.datetime.now()}.\n")
+    print(f"\nTraining {model_name} on dataset {dataset_name} on device {device} with a total of {os.cpu_count()} cores. Starting at {datetime.datetime.now()}.\n")
     print("================================================")
 
     # here we define the data treatment
@@ -71,6 +71,7 @@ def train(
         max_obs_len=collator.max_ep_len,
         max_ep_return=max(env_max_return, collator.max_ep_return),
         max_obs_return=collator.max_ep_return,
+        min_ep_return=collator.min_ep_return,
         min_obs_return=collator.min_ep_return,
         warmup_steps=train_params['warmup_steps'],  # exception: this is used in training but due to HF API it must be in config as well
         log_interval_steps=100,
@@ -97,7 +98,7 @@ def train(
         weight_decay=train_params['weight_decay'],
         warmup_steps=train_params['warmup_steps'],
         max_grad_norm=train_params['max_grad_norm'],
-        dataloader_num_workers=(2 if os.cpu_count() > 5 else 0),
+        dataloader_num_workers=max(0, os.cpu_count()-2),
         data_seed=33,
         disable_tqdm=False,
         log_level="error",

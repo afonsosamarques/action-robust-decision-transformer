@@ -121,7 +121,11 @@ class AdversarialDT(DecisionTransformerModel):
 
         if is_train:
             # return loss
-            rtg_downscaled = (returns_to_go - self.config.min_obs_return) / (self.config.max_ep_return - self.config.min_obs_return)
+            if returns_to_go < self.config.min_ep_return:
+                # Should not happen by definition, so if it does we need to find out why
+                print(f"WARNING: returns_to_go ({returns_to_go}) < min_ep_return ({self.config.min_ep_return}) with max_ep_return ({self.config.max_ep_return})")
+            
+            rtg_downscaled = (returns_to_go - self.config.min_ep_return) / (self.config.max_ep_return - self.config.min_ep_return)
             rtg_log_prob = -rtg_dist.log_prob(rtg_downscaled).sum(axis=2)[attention_mask > 0].mean()
             rtg_loss = rtg_log_prob
 
@@ -132,9 +136,10 @@ class AdversarialDT(DecisionTransformerModel):
                 adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
             # need to issue predictions to train the SDT on
-            rtg_pred_upscaled = self.config.min_obs_return + rtg_dist.rsample() * (self.config.max_ep_return - self.config.min_obs_return)
+            rtg_pred_upscaled = self.config.min_ep_return + rtg_dist.rsample() * (self.config.max_ep_return - self.config.min_ep_return)
                 
-            return {"loss": rtg_loss + adv_action_loss, 
+            return {"loss": rtg_loss + adv_action_loss,
+                    "rtg_log_prob": rtg_log_prob, 
                     "rtg_loss": rtg_loss,
                     "adv_action_loss": adv_action_loss,
                     "alpha": alpha_preds,
@@ -142,7 +147,7 @@ class AdversarialDT(DecisionTransformerModel):
                     "rtg_preds": rtg_pred_upscaled}
         else:
             # return predictions
-            rtg_pred_upscaled = self.config.min_obs_return + rtg_dist.mean * (self.config.max_ep_return - self.config.min_obs_return)
+            rtg_pred_upscaled = self.config.min_ep_return + rtg_dist.mean * (self.config.max_ep_return - self.config.min_ep_return)
             if not return_dict:
                 return (rtg_pred_upscaled, adv_action_preds)
 
@@ -354,7 +359,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 for i in range(sdt_out['sigma'].shape[2]):
                     dist_params[f"mu_{i}"] =  torch.mean(sdt_out['mu'][:, :, i]).item()
                     dist_params[f"sigma_{i}"] =  torch.mean(sdt_out['sigma'][:, :, i]).item()
-
+        
             if self.logger is not None and (self.step == 0 or self.step % self.config.log_interval_steps == 0):
                 self.logger.add_entry(
                     step=self.step,
@@ -362,7 +367,6 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                     tr_losses={"loss": loss,
                                "rtg_loss": adt_out['rtg_loss'], 
                                "rtg_log_prob": adt_out['rtg_log_prob'], 
-                               "rtg_entropy": adt_out['rtg_entropy'], 
                                "adv_action_loss": adt_out['adv_action_loss'],
                                "pr_action_loss": 0 if sdt_out is None else sdt_out['loss'],
                                "pr_action_log_prob": 0 if sdt_out is None else sdt_out['pr_action_log_prob'], 

@@ -6,18 +6,18 @@ environment_config:
 
 dataset_config:
   is_local: true  # true, false, whether it is stored locally or up on HF
-  online_policy_name: "ppo"  # d4rl, rarl, arrl_nrdmp, arrl_prmdp, dataset_combo, randagent, etc.
-  dataset_type: "test"  # train, test, expert
+  online_policy_name: "arrl_nrmdp"  # d4rl, rarl, arrl_nrdmp, arrl_prmdp, dataset_combo, randagent, etc.
+  dataset_type: "train"  # train, test, expert
   dataset_version: ""  # fill only if there is any type of versioning to the dataset being considered, otherwise leave blank
 
 model_config:
-  agent_type: "dt"  # dt, ardt-simplest, ardt-vanilla, ardt-full
+  agent_type: "ardt-full"  # dt, ardt-simplest, ardt-vanilla, ardt-full
   context_size: [20]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
-  lambda1: []  # these are for different parameter combinations to try!!
-  lambda2: []  # these are for different parameter combinations to try!!
+  lambda1: [5]  # these are for different parameter combinations to try!!
+  lambda2: [500]  # these are for different parameter combinations to try!!
 
 training_config:
-  train_steps: 2  # 6 => 10**6
+  train_steps: 3  # 6 => 10**6
   train_batch_size: 64  # 32/64
   learning_rate: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   weight_decay: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
@@ -34,8 +34,8 @@ evaluation_config:
   adv_model_types: []  # dt, ardt-simplest, ardt-vanilla, ardt-full
 
 admin_config:
-  wandb_project: "ARDT-Project"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
-  hf_project: "ARDT-Project"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
+  wandb_project: "Experiment-1"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
+  hf_project: "Experiment-1"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
   run_type: "test"  # "core", "pipeline", or "test"
   is_verbose: false  # whether to print anything at all
   print_tracebacks: false  # whether to print tracebacks of errors

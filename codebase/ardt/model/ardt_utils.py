@@ -82,7 +82,7 @@ class DecisionTransformerGymDataCollator:
 
             # see if trajectory is adversarial, if so get shift
             shift = 0.0
-            if not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions'])):
+            if not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions'])) and np.any(traj['adv_actions'] != 0.0):
                 ret = np.sum(traj["rewards"])
                 ret_percent = (ret - self.min_ep_return) / (self.max_ep_adv_return - self.min_ep_return)
                 scaled_ret = ret_percent * (self.max_ep_return - self.min_ep_return) + self.min_ep_return
