@@ -269,10 +269,11 @@ class ADTEvalWrapper(EvalWrapper):
         self.rewards = torch.zeros(0, device=self.device, dtype=torch.float32)
         self.timesteps = torch.tensor(0, device=self.device, dtype=torch.long).reshape(1, 1)
 
-    def get_action(self, **kwargs):
+    def get_action(self, pr_action=None, **kwargs):
         if not self.has_started:
             raise RuntimeError("Must call new_eval before get_action.")
-        self.pr_actions = torch.cat([self.pr_actions, torch.zeros((1, self.model.config.pr_act_dim), device=self.device)], dim=0)
+        new_pr_action = torch.tensor(pr_action, device=self.device).reshape(1, -1) if pr_action is not None else torch.zeros((1, self.model.config.pr_act_dim), device=self.device)
+        self.pr_actions = torch.cat([self.pr_actions, new_pr_action], dim=0)
         self.adv_actions = torch.cat([self.adv_actions, torch.zeros((1, self.model.config.adv_act_dim), device=self.device)], dim=0)
         self.rewards = torch.cat([self.rewards, torch.zeros(1, device=self.device)])
 

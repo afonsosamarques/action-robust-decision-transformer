@@ -82,7 +82,7 @@ def evaluate(
             # run episode
             for t in range(env_steps):
                 pr_action, _ = pr_model.get_action(state=state)
-                _, adv_action = adv_model.get_action(state=state)
+                _, adv_action = adv_model.get_action(state=state, pr_action=pr_action)
 
                 if t == 1:
                     print(f"Starting episode {run_idx}. Checking that adversary is active. Adversarial action: ", adv_action)
