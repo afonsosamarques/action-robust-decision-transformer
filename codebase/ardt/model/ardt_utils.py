@@ -36,23 +36,33 @@ class DecisionTransformerGymDataCollator:
     n_traj: int = 0  # to store the number of trajectories in the dataset
     
     def __init__(self, dataset, context_size, returns_scale):
+        # process dataset: add returns to go
+        compute_rtg = lambda ds: {'returns_to_go': np.cumsum(ds["rewards"][::-1])[::-1]}
+        dataset = dataset.map(compute_rtg)
         self.dataset = dataset
-        # get dataset-specific features
+        # get dataset settings
         self.max_ep_len = max([len(traj["rewards"]) for traj in dataset])
         self.pr_act_dim = len(dataset[0]["pr_actions"][0])
         self.adv_act_dim = len(dataset[0]["adv_actions"][0])
         self.state_dim = len(dataset[0]["observations"][0])
         self.context_size = context_size
         self.returns_scale = returns_scale
-        self.max_ep_return = max([np.sum(traj["rewards"]) for traj in dataset])
-        self.max_ep_adv_return = max([-10e10] + [np.sum(traj["rewards"]) for traj in dataset if not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions']))])
-        if self.max_ep_adv_return == -10e10:
-            self.max_ep_adv_return = self.max_ep_return
-        self.min_ep_return = min([np.sum(traj["rewards"]) for traj in dataset])
+        # process returns data
+        ep_returns = []
+        ep_adv_returns = []
+        for trajectory in dataset:
+            ep_returns.extend(trajectory["returns_to_go"])
+            if not np.allclose(trajectory['adv_actions'], np.zeros_like(trajectory['adv_actions'])):
+                ep_adv_returns.extend(trajectory["returns_to_go"])
+        self.max_ep_return = max(ep_returns)
+        self.max_ep_adv_return = max(ep_adv_returns)
+        self.min_ep_return = min(ep_returns)
+        self.min_ep_adv_return = min(ep_adv_returns)
+        self.is_mixed = self.max_ep_return != self.max_ep_adv_return
         # retrieve lower bounds for actions
         self.pr_act_lb = min(0.0, (int(np.min([np.min(traj["pr_actions"]) for traj in dataset])) - 1) * 5.0)
         self.adv_act_lb = min(0.0, (int(np.min([np.min(traj["adv_actions"]) for traj in dataset])) - 1) * 5.0)
-        # collect some statistics about the dataset
+        # collect statistics about states to produce normalisation constants
         states = []
         traj_lens = []
         for obs in dataset["observations"]:
@@ -60,7 +70,6 @@ class DecisionTransformerGymDataCollator:
             traj_lens.append(len(obs))
         states = np.vstack(states)
         traj_lens = np.array(traj_lens)
-        # use stats to produce normalisation constants
         self.state_mean, self.state_std = np.mean(states, axis=0), np.std(states, axis=0) + 1e-8
         self.n_traj = traj_lens.shape[0]
         self.p_sample = traj_lens / sum(traj_lens)
@@ -80,13 +89,14 @@ class DecisionTransformerGymDataCollator:
         for idx in batch_idx:
             traj = self.dataset[int(idx)]
 
-            # see if trajectory is adversarial, if so get shift
-            shift = 0.0
-            if not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions'])) and np.any(traj['adv_actions'] != 0.0):
-                ret = np.sum(traj["rewards"])
-                ret_percent = (ret - self.min_ep_return) / (self.max_ep_adv_return - self.min_ep_return)
-                scaled_ret = ret_percent * (self.max_ep_return - self.min_ep_return) + self.min_ep_return
-                shift = scaled_ret - ret
+            # see if dataset is mixed and trajectory is adversarial, if so get shift
+            shifts = np.zeros_like(traj['returns_to_go'])
+            if self.is_mixed and not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions'])):
+                returns_to_go = np.array(traj['returns_to_go'])
+                ret_percents = (returns_to_go - self.min_ep_adv_return) / (self.max_ep_adv_return - self.min_ep_adv_return)
+                assert np.all(ret_percents <= 1.0) and np.all(ret_percents >= 0.0), "Return percentage needs to be between 0 and 1."
+                scaled_rtgs = ret_percents * (self.max_ep_return - self.min_ep_return) + self.min_ep_return
+                shifts = scaled_rtgs - returns_to_go
 
             # get sequences from the dataset
             start = random.randint(0, len(traj["rewards"]) - 1)
@@ -94,15 +104,11 @@ class DecisionTransformerGymDataCollator:
             a_pr.append(np.array(traj["pr_actions"][start : start + self.context_size]).reshape(1, -1, self.pr_act_dim))
             a_adv.append(np.array(traj["adv_actions"][start : start + self.context_size]).reshape(1, -1, self.adv_act_dim))
             r.append(np.array(traj["rewards"][start : start + self.context_size]).reshape(1, -1, 1))
+            rtg.append(np.array(traj["returns_to_go"][start : start + self.context_size]).reshape(1, -1, 1))
+            rtg_scaled.append((np.array(traj["returns_to_go"][start : start + self.context_size]) + np.array(shifts[start : start + self.context_size])).reshape(1, -1, 1))
             d.append(np.array(traj["dones"][start : start + self.context_size]).reshape(1, -1))
-
             tsteps.append(np.arange(start, start + s[-1].shape[1]).reshape(1, -1))
             tsteps[-1][tsteps[-1] >= self.max_ep_len] = self.max_ep_len - 1  # padding cutoff
-            
-            rewards = np.array(traj["rewards"][start:])
-            rtgs = np.cumsum(rewards[::-1])[::-1][:self.context_size].reshape(1, -1, 1)
-            rtg.append(rtgs)
-            rtg_scaled.append(rtgs + shift)
 
             # normalising and padding; we pad with zeros to the left of the sequence
             # except for actions, where we need to pad with some negative number well outside of domain

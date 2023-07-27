@@ -119,13 +119,13 @@ class AdversarialDT(DecisionTransformerModel):
         
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given state and pr_action
 
+        # rescale return statistics
+        min_ep_return = self.config.min_ep_return / self.config.returns_scale
+        max_ep_return = self.config.max_ep_return / self.config.returns_scale
+
         if is_train:
             # return loss
-            if returns_to_go < self.config.min_ep_return:
-                # Should not happen by definition, so if it does we need to find out why
-                print(f"WARNING: returns_to_go ({returns_to_go}) < min_ep_return ({self.config.min_ep_return}) with max_ep_return ({self.config.max_ep_return})")
-            
-            rtg_downscaled = (returns_to_go - self.config.min_ep_return) / (self.config.max_ep_return - self.config.min_ep_return)
+            rtg_downscaled = (returns_to_go - min_ep_return) / (max_ep_return - min_ep_return)
             rtg_log_prob = -rtg_dist.log_prob(rtg_downscaled).sum(axis=2)[attention_mask > 0].mean()
             rtg_loss = rtg_log_prob
 
@@ -136,7 +136,7 @@ class AdversarialDT(DecisionTransformerModel):
                 adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
             # need to issue predictions to train the SDT on
-            rtg_pred_upscaled = self.config.min_ep_return + rtg_dist.rsample() * (self.config.max_ep_return - self.config.min_ep_return)
+            rtg_pred_upscaled = min_ep_return + rtg_dist.rsample() * (max_ep_return - min_ep_return)
                 
             return {"loss": rtg_loss + adv_action_loss,
                     "rtg_log_prob": rtg_log_prob, 
@@ -147,7 +147,7 @@ class AdversarialDT(DecisionTransformerModel):
                     "rtg_preds": rtg_pred_upscaled}
         else:
             # return predictions
-            rtg_pred_upscaled = self.config.min_ep_return + rtg_dist.mean * (self.config.max_ep_return - self.config.min_ep_return)
+            rtg_pred_upscaled = min_ep_return + rtg_dist.mean * (max_ep_return - min_ep_return)
             if not return_dict:
                 return (rtg_pred_upscaled, adv_action_preds)
 
