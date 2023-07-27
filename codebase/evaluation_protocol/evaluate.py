@@ -29,6 +29,7 @@ def launch_evaluation(
         adv_model_name=None,
         adv_model_type=None,
         adv_model_path=None,
+        omni_adv=False,
         run_suffix='',
         record_data=False,
         verbose=False,
@@ -78,6 +79,7 @@ def launch_evaluation(
             adv_model_name=adv_model_name,
             adv_model_type=adv_model_type,
             adv_model_path=adv_model_path,
+            omni_adv=omni_adv,
             env_name=env_name,
             env_type=env_type,
             env_steps=env_steps,
@@ -108,6 +110,7 @@ if __name__ == "__main__":
     # load config
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_name', type=str, required=True, help='Name of yaml configuration file to use.')
+    parser.add_argument('--omni_adv', action='store_true', help='Whether to have the adversary know the protagonist action.')
     parser.add_argument('--record_data', action='store_true', help='Whether to record evaluation data in case of two-player game.')
     parser.add_argument('--not_verbose', action='store_true', help='Whether to keep tack of evaluation procedure.')
     args = parser.parse_args()
@@ -145,6 +148,7 @@ if __name__ == "__main__":
                 eval_target=config.eval_target_return,
                 adv_model_name=adv_model_name,
                 adv_model_type=adv_model_type,
+                omni_adv=args.omni_adv,
                 run_suffix=run_suffix,
                 record_data=args.record_data,
                 verbose=(not args.not_verbose),

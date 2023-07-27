@@ -21,6 +21,7 @@ def evaluate(
         adv_model_name,
         adv_model_type,
         adv_model_path,
+        omni_adv,
         env_name,
         env_type,
         env_steps,
@@ -82,8 +83,11 @@ def evaluate(
             # run episode
             for t in range(env_steps):
                 pr_action, _ = pr_model.get_action(state=state)
-                _, adv_action = adv_model.get_action(state=state, pr_action=pr_action)
-
+                if omni_adv:
+                    _, adv_action = adv_model.get_action(state=state, pr_action=pr_action)
+                else:
+                    _, adv_action = adv_model.get_action(state=state)
+                
                 if t == 1:
                     print(f"Starting episode {run_idx}. Checking that adversary is active. Adversarial action: ", adv_action)
 
@@ -139,7 +143,7 @@ def evaluate(
     dir_path = f'{find_root_dir()}/eval-outputs{run_suffix}/{pr_model_name}'
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
-    with open(f'{dir_path}/{adv_model_name}.json', 'w') as f:
+    with open(f"{dir_path}/{adv_model_name}{'-omni' if omni_adv else ''}.json", 'w') as f:
         json.dump(eval_dict, f)
 
     # save data_dict as hf dataset
