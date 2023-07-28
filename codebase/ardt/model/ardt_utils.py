@@ -55,9 +55,9 @@ class DecisionTransformerGymDataCollator:
             if not np.allclose(trajectory['adv_actions'], np.zeros_like(trajectory['adv_actions'])):
                 ep_adv_returns.extend(trajectory["returns_to_go"])
         self.max_ep_return = max(ep_returns)
-        self.max_ep_adv_return = max(ep_adv_returns)
+        self.max_ep_adv_return = max(ep_adv_returns) if len(ep_adv_returns) > 0 else self.max_ep_return
         self.min_ep_return = min(ep_returns)
-        self.min_ep_adv_return = min(ep_adv_returns)
+        self.min_ep_adv_return = min(ep_adv_returns) if len(ep_adv_returns) > 0 else self.min_ep_return
         self.is_mixed = self.max_ep_return != self.max_ep_adv_return
         # retrieve lower bounds for actions
         self.pr_act_lb = min(0.0, (int(np.min([np.min(traj["pr_actions"]) for traj in dataset])) - 1) * 5.0)
