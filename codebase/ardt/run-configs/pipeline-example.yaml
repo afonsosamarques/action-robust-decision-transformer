@@ -5,10 +5,10 @@ environment_config:
   returns_scale: 1000  # scale returns, 1000 to match original DT implementation
 
 dataset_config:
-  is_local: true  # true, false, whether it is stored locally or up on HF
-  online_policy_name: "arrl_nrmdp"  # d4rl, rarl, arrl_nrdmp, arrl_prmdp, dataset_combo, randagent, etc.
-  dataset_type: "train"  # train, test, expert
-  dataset_version: ""  # fill only if there is any type of versioning to the dataset being considered, otherwise leave blank
+  is_local: [true, true]  # true, false, whether it is stored locally or up on HF - a list
+  online_policy_names: ["arrl_nrmdp", "ppo"]  # d4rl, rarl, arrl_nrdmp, arrl_prmdp, dataset_combo, etc. - a list
+  dataset_types: ["train", "test"]  # train, test, expert - a list
+  dataset_versions: ["", ""]  # fill only if there is any type of versioning to the dataset being considered, otherwise insert empty strings - a list
 
 model_config:
   agent_type: "ardt-full"  # dt, ardt-simplest, ardt-vanilla, ardt-full

@@ -171,9 +171,6 @@ if __name__ == "__main__":
     # unwrapping some of the configs for admin purposes
     run_suffix = load_run_suffix(admin_config.run_type)
     
-    dataset_path, dataset_name = build_dataset_path(dataset_config, env_config.env_type, is_local=dataset_config.is_local, hf_project=admin_config.hf_project)
-    dataset = load_from_disk(dataset_path) if dataset_config.is_local else load_dataset(dataset_path, split='train')
-
     # retrieving (static) environment parameters
     env_params = {
         'env_name': load_env_name(env_config.env_type),
@@ -203,67 +200,84 @@ if __name__ == "__main__":
     params = [context_size, l1, l2, learning_rate, weight_decay, max_grad_norm, warmup_steps]
     params_combinations = list(itertools.product(*params))
 
-    # build, train and evaluate models
-    for params_combination in params_combinations:
-        model_params = {
-            'context_size': params_combination[0],
-            'lambda1': params_combination[1],
-            'lambda2': params_combination[2],
-        }
-        train_params = {
-            'train_steps': train_steps if not args.is_test_run else 10,
-            'train_batch_size': train_batch_size,
-            'learning_rate': params_combination[3],
-            'weight_decay': params_combination[4],
-            'max_grad_norm': params_combination[5],
-            'warmup_steps': params_combination[6],
-        }
+    # iterate through datasets
+    dataset_policies = dataset_config.online_policy_names
+    dataset_types = dataset_config.dataset_types
+    dataset_versions = dataset_config.dataset_versions
+    dataset_is_local = dataset_config.is_local
 
-        # set up model
-        agent_type = model_config.agent_type
-        env_type = env_config.env_type
-        chosen_agent = load_agent(agent_type)
-        model_name = build_model_name(agent_type, dataset_name)
-        
-        # train and recover path
-        model_path_local = train(
-            model_name=model_name,
-            chosen_agent=chosen_agent,
-            dataset_name=dataset_name,
-            dataset=dataset,
-            env_params=env_params,
-            model_params=model_params,
-            train_params=train_params,
-            wandb_project=admin_config.wandb_project,
-            hf_project=admin_config.hf_project,
-            run_suffix=run_suffix,
-            device=device,
+    for dataset_policy, dataset_type, dataset_version, dataset_is_local in zip(dataset_policies, dataset_types, dataset_versions, dataset_is_local):
+        dataset_path, dataset_name = build_dataset_path(
+            dataset_policy,
+            dataset_type,
+            dataset_version, 
+            env_config.env_type, 
+            is_local=dataset_is_local, 
+            hf_project=admin_config.hf_project
         )
+        dataset = load_from_disk(dataset_path) if dataset_config.is_local else load_dataset(dataset_path, split='train')
 
-        # evaluate if desired
-        if config.evaluation_config.is_eval:
-            env_name = load_env_name(env_config.env_type)
-            adv_model_names = eval_config.adv_model_names if eval_config.eval_type == 'agent_adv' else [None]
-            adv_model_types = eval_config.adv_model_types if eval_config.eval_type == 'agent_adv' else [None]
+        # build, train and evaluate models
+        for params_combination in params_combinations:
+            model_params = {
+                'context_size': params_combination[0],
+                'lambda1': params_combination[1],
+                'lambda2': params_combination[2],
+            }
+            train_params = {
+                'train_steps': train_steps if not args.is_test_run else 10,
+                'train_batch_size': train_batch_size,
+                'learning_rate': params_combination[3],
+                'weight_decay': params_combination[4],
+                'max_grad_norm': params_combination[5],
+                'warmup_steps': params_combination[6],
+            }
 
-            for adv_model_name, adv_model_type in zip(adv_model_names, adv_model_types):
-                # irrelevant loop if no explicit adversaries, otherwise runs through list of adversaries
-                launch_evaluation(
-                    eval_type=eval_config.eval_type,
-                    pr_model_name=model_name, 
-                    pr_model_type=agent_type,
-                    model_path_local=model_path_local,
-                    env_name=env_name,
-                    env_type=env_config.env_type,
-                    eval_iters=eval_config.eval_iters if not args.is_test_run else 2,
-                    eval_target=eval_config.eval_target_return,
-                    adv_model_name=adv_model_name,
-                    adv_model_type=adv_model_type,
-                    hf_project=admin_config.hf_project,
-                    run_suffix=run_suffix,
-                    verbose=admin_config.is_verbose,
-                    device=device,
-                )
+            # set up model
+            agent_type = model_config.agent_type
+            env_type = env_config.env_type
+            chosen_agent = load_agent(agent_type)
+            model_name = build_model_name(agent_type, dataset_name)
+            
+            # train and recover path
+            model_path_local = train(
+                model_name=model_name,
+                chosen_agent=chosen_agent,
+                dataset_name=dataset_name,
+                dataset=dataset,
+                env_params=env_params,
+                model_params=model_params,
+                train_params=train_params,
+                wandb_project=admin_config.wandb_project,
+                hf_project=admin_config.hf_project,
+                run_suffix=run_suffix,
+                device=device,
+            )
 
-    print("\n========================================================================================================================")
-    print("Done. \n")
+            # evaluate if desired
+            if config.evaluation_config.is_eval:
+                env_name = load_env_name(env_config.env_type)
+                adv_model_names = eval_config.adv_model_names if eval_config.eval_type == 'agent_adv' else [None]
+                adv_model_types = eval_config.adv_model_types if eval_config.eval_type == 'agent_adv' else [None]
+
+                for adv_model_name, adv_model_type in zip(adv_model_names, adv_model_types):
+                    # irrelevant loop if no explicit adversaries, otherwise runs through list of adversaries
+                    launch_evaluation(
+                        eval_type=eval_config.eval_type,
+                        pr_model_name=model_name, 
+                        pr_model_type=agent_type,
+                        model_path_local=model_path_local,
+                        env_name=env_name,
+                        env_type=env_config.env_type,
+                        eval_iters=eval_config.eval_iters if not args.is_test_run else 2,
+                        eval_target=eval_config.eval_target_return,
+                        adv_model_name=adv_model_name,
+                        adv_model_type=adv_model_type,
+                        hf_project=admin_config.hf_project,
+                        run_suffix=run_suffix,
+                        verbose=admin_config.is_verbose,
+                        device=device,
+                    )
+
+        print("\n========================================================================================================================")
+        print("Done. \n")
