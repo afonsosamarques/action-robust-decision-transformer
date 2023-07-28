@@ -1,0 +1,16 @@
+env_type: "halfcheetah"  # halfcheetah, hopper, walker2d
+run_type: "test"  # "core", "pipeline", or "test"
+hf_project: 'ARDT-Project' # personal project, or ARDT-Project, or ARDT-Internal
+
+trained_model_names: ['ppo_halfcheetah']  # names from models stored on the repo (any readable identifier is ok if stored locally)
+trained_model_types: ['ppo']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, ppo, trpo, randagent
+trained_model_paths: ['evaluation_protocol/trained-models/non-adv/ppo_halfcheetah.zip', 'hf']  # hf if hf hosted, otherwise actual local path to model from 'codebase' directory down
+eval_type: "agent_adv"  # no_adv, env_adv, agent_adv
+eval_steps: 1000  # 1000 is the default in DT
+eval_target_return: 12000  # note this should depend on environment and steps!! 12k is for halfcheetah and 1000 steps for example
+eval_iters: 10000  # ensure robust evaluation
+
+# only if using an explicit adversary!! i.e. eval_type = "agent_adv"
+adv_model_names: ['randadv']  # names from models stored on the repo
+adv_model_types: ['randagent']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, randagent
+adv_model_paths: ['evaluation_protocol/trained-models/randagent/model_halfcheetah.json']  # hf if hf hosted, otherwise actual local path to model from 'action-robust-decision-transformer' directory down

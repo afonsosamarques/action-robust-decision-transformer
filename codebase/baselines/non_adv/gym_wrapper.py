@@ -1,7 +1,10 @@
-from collections import defaultdict
+import random
 
 import gymnasium as gym
 import numpy as np
+import torch
+
+from collections import defaultdict
 
 
 class GymWrapperRecorder(gym.Wrapper):
@@ -32,7 +35,7 @@ class GymWrapperRecorder(gym.Wrapper):
         self.n_steps = 0
         self.curr_episode = defaultdict(list)
         # reset environment
-        observation, info = self.env.reset()
+        observation, info = self.env.reset(seed=seed)
         self.curr_episode['actions'].append(np.zeros_like(self.env.action_space.sample()))
         self.curr_episode['observations'].append(observation)
         self.curr_episode['rewards'].append(0.0)
@@ -44,10 +47,10 @@ class GymWrapperRecorder(gym.Wrapper):
         # gather all the data
         return self.episodes
     
-    def restart(self):
+    def restart(self, seed=None):
         # typically to restart the data collection
         self.n_episodes = 0
         self.n_steps = 0
         self.episodes = []
         self.curr_episode = defaultdict(list)
-        return self.reset()
+        return self.reset(seed)
