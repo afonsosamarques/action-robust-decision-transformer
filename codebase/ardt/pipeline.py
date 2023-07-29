@@ -35,8 +35,9 @@ def train(
         run_suffix='',
         device=torch.device('cpu'),
     ):
+    num_workers = (0 if device == torch.device('mps') or device == torch.device("cpu") else max(0, os.cpu_count()-6))
     print("============================================================================================================")
-    print(f"\nTraining {model_name} on dataset {dataset_name} on device {device} with a total of {os.cpu_count()} cores. Starting at {datetime.datetime.now()}.\n")
+    print(f"\nTraining {model_name} on dataset {dataset_name} on device {device} with a total of {num_workers} cores for data loading. Starting at {datetime.datetime.now()}.\n")
     print("================================================")
 
     # here we define the data treatment
@@ -100,7 +101,7 @@ def train(
         weight_decay=train_params['weight_decay'],
         warmup_steps=train_params['warmup_steps'],
         max_grad_norm=train_params['max_grad_norm'],
-        dataloader_num_workers=(0 if device == torch.device('mps') or device == torch.device("cpu") else max(0, os.cpu_count()-6)),
+        dataloader_num_workers=num_workers,
         data_seed=33,
         disable_tqdm=False,
         log_level="error",
