@@ -113,9 +113,15 @@ class AdversarialDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        alpha_preds = self.predict_alpha(x[:, 1])  # predict next return given return and state
-        epsilon_preds = self.predict_epsilon(x[:, 1])  # predict next return given return and state
-        rtg_dist = torch.distributions.beta.Beta(alpha_preds + epsilon_preds, alpha_preds)
+        try:
+            alpha_preds = self.predict_alpha(x[:, 1])  # predict next return given return and state
+            epsilon_preds = self.predict_epsilon(x[:, 1])  # predict next return given return and state
+            rtg_dist = torch.distributions.beta.Beta(alpha_preds + epsilon_preds, alpha_preds)
+        except ValueError as e:
+            print("Input:\n", x[:, 1])
+            print("Alpha Preds:\n", alpha_preds)
+            print("Epsilon Preds:\n", epsilon_preds)
+            raise e
         
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given state and pr_action
 

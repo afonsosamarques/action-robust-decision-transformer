@@ -1,0 +1,16 @@
+env_type: "halfcheetah"  # halfcheetah, hopper, walker2d
+run_type: "test"  # "core", "pipeline", or "test"
+hf_project: 'ARDT-Internal' # personal project, or ARDT-Project, or ARDT-Internal
+
+trained_model_names: ['dt-dataset_combo_train_halfcheetah_v4-2907_0307']  # names from models stored on the repo (any readable identifier is ok if stored locally)
+trained_model_types: ['dt']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, ppo, trpo, randagent
+trained_model_paths: ['hf']  # hf if hf hosted, otherwise actual local path to model from 'codebase' directory down
+eval_type: "batch_agent_adv"  # no_adv, env_adv, agent_adv, batch_agent_adv, batch_noadv
+eval_steps: 1000  # 1000 is the default in DT
+eval_target_return: 12000  # note this should depend on environment and steps!! 12k is for halfcheetah and 1000 steps for example
+eval_iters: 50  # ensure robust evaluation
+
+# only if using an explicit adversary!! i.e. eval_type = "agent_adv"
+adv_model_names: ['dt-dataset_combo_train_halfcheetah_v4-2907_0307'] #, 'ardt-simplest-dataset_combo_train_halfcheetah_v4-2407_0602', 'ardt-simplest-dataset_combo_train_halfcheetah_v4-2407_0109']  # names from models stored on the repo
+adv_model_types: ['dt'] #, 'ardt-simplest', 'ardt-simplest']  # dt, ardt-simplest, ardt-vanilla, ardt-full, arrl, randagent, zero
+adv_model_paths: ['hf']  # hf if hf hosted, otherwise actual local path to model from 'action-robust-decision-transformer' directory down
