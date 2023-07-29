@@ -159,12 +159,12 @@ class EvaluationRunConfig(BaseModel):
 
 def check_evalrun_config(config):
     config = EvaluationRunConfig(**config)
-    assert config.eval_type in ['no_adv', 'env_adv', 'agent_adv', 'batch_noadv', 'batch_adv'], "Evaluation type needs to be either 'no_adv', 'env_adv', 'agent_adv', 'batch_noadv' or 'batch_adv'."
+    assert config.eval_type in ['no_adv', 'env_adv', 'agent_adv', 'batch_noadv', 'batch_agent_adv'], "Evaluation type needs to be either 'no_adv', 'env_adv', 'agent_adv', 'batch_noadv' or 'batch_adv'."
     assert len(config.trained_model_names) == len(config.trained_model_types), "There need to be as many model names as model types."
     if config.eval_type == 'agent_adv':
         assert len(config.adv_model_names) > 0, "There need to be at least one adversarial model."
         assert len(config.adv_model_names) == len(config.adv_model_types), "There need to be as many adversarial model names as adversarial model types."
-    assert all([mt in ['dt', 'ardt-simplest', 'ardt_simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'arrl-sgld', 'ppo', 'trpo', 'random', 'randagent'] for mt in config.trained_model_types]), "Model type needs to be either 'dt', 'ardt-simplest', 'ardt-simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'arrl-sgld', 'ppo', 'trpo', 'random' or 'randagent'."
+    assert all([mt in ['dt', 'ardt-simplest', 'ardt_simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'arrl-sgld', 'ppo', 'trpo', 'random', 'randagent', 'zeroagent'] for mt in config.trained_model_types]), "Model type needs to be either 'dt', 'ardt-simplest', 'ardt-simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'arrl-sgld', 'ppo', 'trpo', 'random' or 'randagent'."
     assert config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
     assert config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
     return config

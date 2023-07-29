@@ -10,6 +10,7 @@ from huggingface_hub import login
 
 from .evaluate_envadv import evaluate as evaluate_envadv
 from .evaluate_agentadv import evaluate as evaluate_agentadv
+from .evaluate_batch_agentadv import evaluate as evaluate_batch_agentadv
 from .config_utils import check_evalrun_config, load_run_suffix, load_env_name
 from .helpers import find_root_dir
 
@@ -91,6 +92,47 @@ def launch_evaluation(
             hf_project=hf_project,
             device=device,
         )
+    elif eval_type == 'batch_noadv':
+        return evaluate_batch_agentadv(
+            pr_model_name=pr_model_name,
+            pr_model_type=pr_model_type,
+            pr_model_path=model_path,
+            adv_model_name='zeroagent',
+            adv_model_type='zeroagent',
+            adv_model_path='evaluation_protocol/trained-models/zeroagent/model_halfcheetah.json',
+            omni_adv=False,
+            env_name=env_name,
+            env_type=env_type,
+            env_steps=env_steps,
+            eval_iters=eval_iters,
+            eval_target=eval_target,
+            run_suffix=run_suffix,
+            record_data=record_data,
+            verbose=verbose,
+            hf_project=hf_project,
+            device=device,
+        )
+    elif eval_type == 'batch_agent_adv':
+        assert adv_model_name is not None and adv_model_type is not None, "Must provide adversarial model name and type for batch_agent_adv evaluation."
+        return evaluate_batch_agentadv(
+            pr_model_name=pr_model_name,
+            pr_model_type=pr_model_type,
+            pr_model_path=model_path,
+            adv_model_name=adv_model_name,
+            adv_model_type=adv_model_type,
+            adv_model_path=adv_model_path,
+            omni_adv=omni_adv,
+            env_name=env_name,
+            env_type=env_type,
+            env_steps=env_steps,
+            eval_iters=eval_iters,
+            eval_target=eval_target,
+            run_suffix=run_suffix,
+            record_data=record_data,
+            verbose=verbose,
+            hf_project=hf_project,
+            device=device,
+        )
     
 
 if __name__ == "__main__":
@@ -127,9 +169,9 @@ if __name__ == "__main__":
     print(f"Starting evaluation at... {datetime.datetime.now()}")
 
     for model_name, model_type, model_path in zip(config.trained_model_names, config.trained_model_types, config.trained_model_paths):
-        adv_model_names = config.adv_model_names if config.eval_type == 'agent_adv' else [None]
-        adv_model_types = config.adv_model_types if config.eval_type == 'agent_adv' else [None]
-        adv_model_paths = config.adv_model_paths if config.eval_type == 'agent_adv' else ['']
+        adv_model_names = config.adv_model_names if config.eval_type == 'agent_adv' or config.eval_type == 'batch_agent_adv' else [None]
+        adv_model_types = config.adv_model_types if config.eval_type == 'agent_adv' or config.eval_type == 'batch_agent_adv' else [None]
+        adv_model_paths = config.adv_model_paths if config.eval_type == 'agent_adv' or config.eval_type == 'batch_agent_adv' else ['']
 
         for adv_model_name, adv_model_type, adv_model_path in zip(adv_model_names, adv_model_types, adv_model_paths):
             # NOTE HACK HACK cannot run arrl using mps
