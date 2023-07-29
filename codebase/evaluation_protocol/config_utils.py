@@ -159,7 +159,7 @@ class EvaluationRunConfig(BaseModel):
 
 def check_evalrun_config(config):
     config = EvaluationRunConfig(**config)
-    assert config.eval_type in ['no_adv', 'env_adv', 'agent_adv'], "Evaluation type needs to be either 'no_adv', 'env_adv' or 'agent_adv'."
+    assert config.eval_type in ['no_adv', 'env_adv', 'agent_adv', 'batch_noadv', 'batch_adv'], "Evaluation type needs to be either 'no_adv', 'env_adv', 'agent_adv', 'batch_noadv' or 'batch_adv'."
     assert len(config.trained_model_names) == len(config.trained_model_types), "There need to be as many model names as model types."
     if config.eval_type == 'agent_adv':
         assert len(config.adv_model_names) > 0, "There need to be at least one adversarial model."

@@ -31,6 +31,7 @@ def train(
         train_params,
         wandb_project='afonsosamarques',
         hf_project='afonsosamarques',
+        is_offline_log=False,
         run_suffix='',
         device=torch.device('cpu'),
     ):
@@ -79,12 +80,13 @@ def train(
 
     # here we define the training protocol
     wandb.init(
+        mode="offline" if is_offline_log else "online",
         project=wandb_project,
         name=model_name,
         id=model_name,
         tags=[model_name, dataset_name, env_params['env_name'], run_suffix],
         dir=f"{find_root_dir()}",
-        settings=wandb.Settings(_service_wait=600)  # NOTE have to wait for as long as it takes, because cluster connection is a problem
+        settings=wandb.Settings(_service_wait=120)  # NOTE have to wait for as long as it takes, because cluster connection is a problem
     )
 
     hub_model_id = hf_project + "/" + model_name if hf_project is not None else model_name
@@ -144,7 +146,13 @@ if __name__ == "__main__":
     #
     # admin
     login(token=HF_WRITE_TOKEN)
-    wandb.login(key=WANDB_TOKEN, timeout=600)
+    is_offline_log = False
+    try:
+        wandb.login(key=WANDB_TOKEN, timeout=120)
+    except Exception:
+        is_offline_log = True
+        print("Could not connect to wandb. Proceeding with a dry run.")
+
     device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
     if device == torch.device("mps"):
         r = subprocess.run('export PYTORCH_ENABLE_MPS_FALLBACK=1', shell=True)
@@ -250,6 +258,7 @@ if __name__ == "__main__":
                 train_params=train_params,
                 wandb_project=admin_config.wandb_project,
                 hf_project=admin_config.hf_project,
+                is_offline_log=is_offline_log,
                 run_suffix=run_suffix,
                 device=device,
             )
