@@ -112,11 +112,12 @@ def evaluate(
                 episode_return += reward
                 episode_length += 1
 
-                episode_data['observations'].append(state)
-                episode_data['pr_actions'].append(pr_action)
-                episode_data['adv_actions'].append(adv_action)
-                episode_data['rewards'].append(reward)
-                episode_data['dones'].append(done)
+                if record_data:
+                    episode_data['observations'].append(state)
+                    episode_data['pr_actions'].append(pr_action)
+                    episode_data['adv_actions'].append(adv_action)
+                    episode_data['rewards'].append(reward)
+                    episode_data['dones'].append(done)
 
                 # finish and log episode
                 if done or trunc or t == env_steps - 1:
@@ -128,11 +129,12 @@ def evaluate(
                     eval_dict['ep_length'].append(episode_length)
                     eval_dict['ep_return'].append(episode_return)
                     # log episode data
-                    data_dict['observations'].append(episode_data['observations'])
-                    data_dict['pr_actions'].append(episode_data['pr_actions'])
-                    data_dict['adv_actions'].append(episode_data['adv_actions'])
-                    data_dict['rewards'].append(episode_data['rewards'])
-                    data_dict['dones'].append(episode_data['dones'])
+                    if record_data:
+                        data_dict['observations'].append(episode_data['observations'])
+                        data_dict['pr_actions'].append(episode_data['pr_actions'])
+                        data_dict['adv_actions'].append(episode_data['adv_actions'])
+                        data_dict['rewards'].append(episode_data['rewards'])
+                        data_dict['dones'].append(episode_data['dones'])
                     break
     
     # show some simple statistics
@@ -147,5 +149,6 @@ def evaluate(
         json.dump(eval_dict, f)
 
     # save data_dict as hf dataset
-    data_ds = Dataset.from_dict(data_dict)
-    data_ds.save_to_disk(f'{find_root_dir()}/datasets/{pr_model_name}_{adv_model_name}_eval_{env_type}')
+    if record_data:
+        data_ds = Dataset.from_dict(data_dict)
+        data_ds.save_to_disk(f'{find_root_dir()}/datasets/{pr_model_name}_{adv_model_name}_eval_{env_type}')
