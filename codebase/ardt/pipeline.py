@@ -98,7 +98,7 @@ def train(
         weight_decay=train_params['weight_decay'],
         warmup_steps=train_params['warmup_steps'],
         max_grad_norm=train_params['max_grad_norm'],
-        dataloader_num_workers=(5 if device == torch.device('mps') or device == torch.device("cpu") else max(0, os.cpu_count()-2)),
+        dataloader_num_workers=(0 if device == torch.device('mps') or device == torch.device("cpu") else max(0, os.cpu_count()-6)),
         data_seed=33,
         disable_tqdm=False,
         log_level="error",
