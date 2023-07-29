@@ -16,6 +16,7 @@ from stable_baselines3 import PPO
 from sb3_contrib import TRPO
 from baselines.non_adv.model_wrapper import SBEvalWrapper
 from baselines.all_random.random_agent import RandomAgent, RandomAgentWrapper
+from baselines.zero_agent.zero_agent import ZeroAgent, ZeroAgentWrapper
 
 
 ##########################################################################
@@ -126,6 +127,10 @@ def load_model(model_type, model_to_use, model_path):
         with open(model_path, 'rb') as f:
             model_params = json.load(f)
         return RandomAgentWrapper(RandomAgent(model_params['action_space'])), True
+    elif model_type == "zero" or model_type == "zeroagent":
+        # really we could just pass in the action space, but this is more similar to the rest of it
+        # just need a json file with the action space of the given environment we are evaluating on
+        return ZeroAgentWrapper(ZeroAgent(model_params['action_space'])), True
     else:
         raise Exception(f"Model {model_to_use} of type {model_type} not available.")
 
