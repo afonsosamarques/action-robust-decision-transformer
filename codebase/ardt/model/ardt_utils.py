@@ -237,7 +237,7 @@ class DTEvalWrapper(EvalWrapper):
         self.actions = torch.cat([self.actions, torch.zeros((1, self.model.config.act_dim), device=self.device)], dim=0)
         self.rewards = torch.cat([self.rewards, torch.zeros(1, device=self.device)])
 
-        pr_action, adv_action = self.model.get_action(
+        pr_action, adv_action = self.model.get_actions(
             self.states,
             self.actions,
             self.rewards,
@@ -253,14 +253,14 @@ class DTEvalWrapper(EvalWrapper):
         self.actions = torch.cat([self.actions, torch.zeros((self.batch_size, 1, self.model.config.act_dim), device=self.device)], dim=1)
         self.rewards = torch.cat([self.rewards, torch.zeros((self.batch_size, 1), device=self.device)], dim=1)
 
-        pr_actions, adv_actions = self.model.get_batch_actions(
-            self.batch_size,
+        pr_actions, adv_actions = self.model.get_actions(
             self.states,
             self.actions,
             self.rewards,
             self.target_returns,
             self.timesteps,
             self.device,
+            batch_size=self.batch_size,
         )
         return pr_actions.detach().cpu().numpy(), adv_actions.detach().cpu().numpy()
     
@@ -316,6 +316,20 @@ class ADTEvalWrapper(EvalWrapper):
         self.rewards = torch.zeros(0, device=self.device, dtype=torch.float32)
         self.timesteps = torch.tensor(0, device=self.device, dtype=torch.long).reshape(1, 1)
 
+    def new_batch_eval(self, start_states, eval_target):
+        self.has_started = True
+        self.batch_size = len(start_states)
+        # from environment
+        self.target_returns = torch.zeros((self.batch_size, 1, 1), device=self.device, dtype=torch.float32)
+        self.target_returns[:, 0] = torch.tensor(eval_target/self.returns_scale, device=self.device, dtype=torch.float32)
+        self.states = torch.from_numpy(start_states).reshape(self.batch_size, 1, self.model.config.state_dim).to(device=self.device, dtype=torch.float32)
+        # independent
+        self.t = 0
+        self.pr_actions = torch.zeros((self.batch_size, 0, self.model.config.pr_act_dim), device=self.device, dtype=torch.float32)
+        self.adv_actions = torch.zeros((self.batch_size, 0, self.model.config.adv_act_dim), device=self.device, dtype=torch.float32)
+        self.rewards = torch.zeros((self.batch_size, 0), device=self.device, dtype=torch.float32)
+        self.timesteps = torch.empty((self.batch_size, 1), device=self.device, dtype=torch.long)
+
     def get_action(self, pr_action=None, **kwargs):
         if not self.has_started:
             raise RuntimeError("Must call new_eval before get_action.")
@@ -324,7 +338,7 @@ class ADTEvalWrapper(EvalWrapper):
         self.adv_actions = torch.cat([self.adv_actions, torch.zeros((1, self.model.config.adv_act_dim), device=self.device)], dim=0)
         self.rewards = torch.cat([self.rewards, torch.zeros(1, device=self.device)])
 
-        pr_action, adv_action = self.model.get_action(
+        pr_action, adv_action = self.model.get_actions(
             self.states,
             self.pr_actions,
             self.adv_actions,
@@ -334,6 +348,26 @@ class ADTEvalWrapper(EvalWrapper):
             self.device,
         )
         return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()
+    
+    def get_batch_actions(self, pr_actions=None, **kwargs):
+        if not self.has_started:
+            raise RuntimeError("Must call new_eval before get_batch_actions.")
+        new_pr_actions = torch.tensor(pr_actions, device=self.device).reshape(self.batch_size, 1, -1) if pr_actions is not None else torch.zeros((self.batch_size, 1, self.model.config.pr_act_dim), device=self.device)
+        self.pr_actions = torch.cat([self.pr_actions, new_pr_actions], dim=1)
+        self.adv_actions = torch.cat([self.adv_actions, torch.zeros((self.batch_size, 1, self.model.config.adv_act_dim), device=self.device)], dim=1)
+        self.rewards = torch.cat([self.rewards, torch.zeros((self.batch_size, 1), device=self.device)], dim=1)
+
+        pr_actions, adv_actions = self.model.get_actions(
+            self.states,
+            self.pr_actions,
+            self.adv_actions,
+            self.rewards,
+            self.target_returns,
+            self.timesteps,
+            self.device,
+            batch_size=self.batch_size,
+        )
+        return pr_actions.detach().cpu().numpy(), adv_actions.detach().cpu().numpy()
     
     def update_history(self, pr_action, adv_action, state, reward, timestep):
         if not self.has_started:
@@ -350,6 +384,23 @@ class ADTEvalWrapper(EvalWrapper):
 
         self.t = timestep
         self.timesteps = torch.cat([self.timesteps, torch.ones((1, 1), device=self.device, dtype=torch.long) * (self.t + 1)], dim=1)
+
+    def update_batch_history(self, pr_actions, adv_actions, states, rewards, timestep):
+        if not self.has_started:
+            raise RuntimeError("Must call new_eval before update_batch_history.")
+        self.pr_actions[:, -1] = torch.tensor(pr_actions).to(device=self.device)
+        self.adv_actions[:, -1] = torch.tensor(adv_actions).to(device=self.device)
+        rewards_tsr = torch.from_numpy(rewards.astype(np.float32)).to(device=self.device)
+        self.rewards[:, -1] = rewards_tsr
+
+        cur_states = torch.from_numpy(states.astype(np.float32)).to(device=self.device).reshape(self.batch_size, 1, self.model.config.state_dim)
+        self.states = torch.cat([self.states, cur_states], dim=1)
+        
+        pred_returns = self.target_returns[:, -1, :] - (rewards_tsr.reshape(self.batch_size, 1) / self.returns_scale)
+        self.target_returns = torch.cat([self.target_returns, pred_returns.reshape(self.batch_size, 1, 1)], dim=1)
+
+        self.t = timestep
+        self.timesteps = torch.cat([self.timesteps, torch.ones((self.batch_size, 1), device=self.device, dtype=torch.long) * (self.t + 1)], dim=1)
 
 
 def initialise_weights(module):

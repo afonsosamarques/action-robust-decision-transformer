@@ -113,15 +113,9 @@ class AdversarialDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        try:
-            alpha_preds = self.predict_alpha(x[:, 1])  # predict next return given return and state
-            epsilon_preds = self.predict_epsilon(x[:, 1])  # predict next return given return and state
-            rtg_dist = torch.distributions.beta.Beta(alpha_preds + epsilon_preds, alpha_preds)
-        except ValueError as e:
-            print("Input:\n", x[:, 1])
-            print("Alpha Preds:\n", alpha_preds)
-            print("Epsilon Preds:\n", epsilon_preds)
-            raise e
+        alpha_preds = self.predict_alpha(x[:, 1])  # predict next return given return and state
+        epsilon_preds = self.predict_epsilon(x[:, 1])  # predict next return given return and state
+        rtg_dist = torch.distributions.beta.Beta(alpha_preds + epsilon_preds, alpha_preds)
         
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given state and pr_action
 
@@ -433,7 +427,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
     def eval(self, **kwargs):
         return ADTEvalWrapper(self)
     
-    def get_action(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device):
+    def get_actions(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device, batch_size=1):
         # NOTE this implementation does not condition on past rewards
         # reshape to model input format
         states = states.reshape(1, -1, self.config.state_dim)
@@ -458,12 +452,12 @@ class TwoAgentRobustDT(DecisionTransformerModel):
 
         # pad all tokens to sequence length
         padlen = self.config.context_size - states.shape[1]
-        attention_mask = torch.cat([torch.zeros(padlen, device=device), torch.ones(states.shape[1], device=device)]).to(dtype=torch.long).reshape(1, -1)
-        states = torch.cat([torch.zeros((1, padlen, self.config.state_dim), device=device), states], dim=1).float()
-        pr_actions = torch.cat([torch.zeros((1, padlen, self.config.pr_act_dim), device=device), pr_actions], dim=1).float()
-        adv_actions = torch.cat([torch.zeros((1, padlen, self.config.adv_act_dim), device=device), adv_actions], dim=1).float()
-        returns_to_go = torch.cat([torch.zeros((1, padlen, 1), device=device), returns_to_go], dim=1).float()
-        timesteps = torch.cat([torch.zeros((1, padlen), dtype=torch.long, device=device), timesteps], dim=1)
+        attention_mask = torch.cat([torch.zeros((batch_size, padlen), device=device), torch.ones((batch_size, states.shape[1]), device=device)], dim=1).to(dtype=torch.long)
+        states = torch.cat([torch.zeros((batch_size, padlen, self.config.state_dim), device=device), states], dim=1).float()
+        pr_actions = torch.cat([torch.zeros((batch_size, padlen, self.config.pr_act_dim), device=device), pr_actions], dim=1).float()
+        adv_actions = torch.cat([torch.zeros((batch_size, padlen, self.config.adv_act_dim), device=device), adv_actions], dim=1).float()
+        returns_to_go = torch.cat([torch.zeros((batch_size, padlen, 1), device=device), returns_to_go], dim=1).float()
+        timesteps = torch.cat([torch.zeros((batch_size, padlen), dtype=torch.long, device=device), timesteps], dim=1)
 
         # forward pass
         pr_action_preds, adv_action_preds = self.forward(
@@ -478,4 +472,4 @@ class TwoAgentRobustDT(DecisionTransformerModel):
             return_dict=False,
         )
 
-        return pr_action_preds[0, -1], adv_action_preds[0, -1]
+        return pr_action_preds[:, -1], adv_action_preds[:, -1]

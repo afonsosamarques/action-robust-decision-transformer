@@ -168,14 +168,14 @@ class SingleAgentRobustDT(DecisionTransformerModel):
     def eval(self, **kwargs):
         return ADTEvalWrapper(self)
     
-    def get_action(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device):
+    def get_actions(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device, batch_size=1):
         # NOTE this implementation does not condition on past rewards
         # reshape to model input format
-        states = states.reshape(1, -1, self.config.state_dim)
-        pr_actions = pr_actions.reshape(1, -1, self.config.pr_act_dim)
-        adv_actions = adv_actions.reshape(1, -1, self.config.adv_act_dim)
-        returns_to_go = returns_to_go.reshape(1, -1, 1)
-        timesteps = timesteps.reshape(1, -1)
+        states = states.reshape(batch_size, -1, self.config.state_dim)
+        pr_actions = pr_actions.reshape(batch_size, -1, self.config.pr_act_dim)
+        adv_actions = adv_actions.reshape(batch_size, -1, self.config.adv_act_dim)
+        returns_to_go = returns_to_go.reshape(batch_size, -1, 1)
+        timesteps = timesteps.reshape(batch_size, -1)
 
         # normalisation constants
         state_mean = torch.from_numpy(np.array(self.config.state_mean).astype(np.float32)).to(device=device)
@@ -193,12 +193,12 @@ class SingleAgentRobustDT(DecisionTransformerModel):
 
         # pad all tokens to sequence length
         padlen = self.config.context_size - states.shape[1]
-        attention_mask = torch.cat([torch.zeros(padlen, device=device), torch.ones(states.shape[1], device=device)]).to(dtype=torch.long).reshape(1, -1)
-        states = torch.cat([torch.zeros((1, padlen, self.config.state_dim), device=device), states], dim=1).float()
-        pr_actions = torch.cat([torch.zeros((1, padlen, self.config.pr_act_dim), device=device), pr_actions], dim=1).float()
-        adv_actions = torch.cat([torch.zeros((1, padlen, self.config.adv_act_dim), device=device), adv_actions], dim=1).float()
-        returns_to_go = torch.cat([torch.zeros((1, padlen, 1), device=device), returns_to_go], dim=1).float()
-        timesteps = torch.cat([torch.zeros((1, padlen), dtype=torch.long, device=device), timesteps], dim=1)
+        attention_mask = torch.cat([torch.zeros((batch_size, padlen), device=device), torch.ones((batch_size, states.shape[1]), device=device)], dim=1).to(dtype=torch.long)
+        states = torch.cat([torch.zeros((batch_size, padlen, self.config.state_dim), device=device), states], dim=1).float()
+        pr_actions = torch.cat([torch.zeros((batch_size, padlen, self.config.pr_act_dim), device=device), pr_actions], dim=1).float()
+        adv_actions = torch.cat([torch.zeros((batch_size, padlen, self.config.adv_act_dim), device=device), adv_actions], dim=1).float()
+        returns_to_go = torch.cat([torch.zeros((batch_size, padlen, 1), device=device), returns_to_go], dim=1).float()
+        timesteps = torch.cat([torch.zeros((batch_size, padlen), dtype=torch.long, device=device), timesteps], dim=1)
 
         # forward pass
         pr_action_preds, adv_action_preds = self.forward(
@@ -213,4 +213,4 @@ class SingleAgentRobustDT(DecisionTransformerModel):
             return_dict=False,
         )
 
-        return pr_action_preds[0, -1], adv_action_preds[0, -1]
+        return pr_action_preds[:, -1], adv_action_preds[:, -1]
