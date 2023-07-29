@@ -82,7 +82,7 @@ def evaluate(
 
             # run episode
             for t in range(env_steps):
-                pr_action, _ = pr_model.get_action(state=state)
+                pr_action, est_adv_action = pr_model.get_action(state=state)
                 if omni_adv:
                     _, adv_action = adv_model.get_action(state=state, pr_action=pr_action)
                 else:
@@ -96,7 +96,7 @@ def evaluate(
 
                 pr_model.update_history(
                     pr_action=pr_action, 
-                    adv_action=adv_action, 
+                    adv_action=est_adv_action,
                     state=state, 
                     reward=reward,
                     timestep=t
