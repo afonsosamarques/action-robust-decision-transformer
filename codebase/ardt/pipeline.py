@@ -144,7 +144,7 @@ if __name__ == "__main__":
     #
     # admin
     login(token=HF_WRITE_TOKEN)
-    wandb.login(key=WANDB_TOKEN)
+    wandb.login(key=WANDB_TOKEN, timeout=600)
     device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
     if device == torch.device("mps"):
         r = subprocess.run('export PYTORCH_ENABLE_MPS_FALLBACK=1', shell=True)
