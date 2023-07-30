@@ -23,18 +23,18 @@ class AdversarialDT(DecisionTransformerModel):
         self.embed_adv_action = torch.nn.Linear(config.adv_act_dim, config.hidden_size)
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
-        self.predict_mu = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()]))
+        self.predict_alpha = torch.nn.Sequential(
+            *([torch.nn.Linear(config.hidden_size, 1)] + [BetaParamsSquashFunc()] + [ExpFunc()])
         )
-        self.predict_sigma = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdSquashFunc()] + [ExpFunc()])
+        self.predict_epsilon = torch.nn.Sequential(
+            *([torch.nn.Linear(config.hidden_size, 1)] + [BetaParamsSquashFunc()] + [ExpFunc()])
         )
         self.predict_adv_action = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()]))
         )
 
-        self.predict_mu.apply(initialise_weights)
-        self.predict_sigma.apply(initialise_weights)
+        self.predict_alpha.apply(initialise_weights)
+        self.predict_epsilon.apply(initialise_weights)
         self.predict_adv_action.apply(initialise_weights)
 
         self.post_init()
@@ -113,15 +113,20 @@ class AdversarialDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        mu_preds = self.predict_mu(x[:, 1])  # predict next return given return and state
-        sigma_preds = self.predict_sigma(x[:, 1])  # predict next return given return and state
-        rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)
+        alpha_preds = self.predict_alpha(x[:, 1])  # predict next return given return and state
+        epsilon_preds = self.predict_epsilon(x[:, 1])  # predict next return given return and state
+        rtg_dist = torch.distributions.beta.Beta(alpha_preds + epsilon_preds, alpha_preds)
         
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given state and pr_action
 
+        # rescale return statistics
+        min_ep_return = self.config.min_ep_return / self.config.returns_scale
+        max_ep_return = self.config.max_ep_return / self.config.returns_scale
+
         if is_train:
             # return loss
-            rtg_log_prob = -rtg_dist.log_prob(returns_to_go).sum(axis=2)[attention_mask > 0].mean()
+            rtg_downscaled = (returns_to_go - min_ep_return) / (max_ep_return - min_ep_return)
+            rtg_log_prob = -rtg_dist.log_prob(rtg_downscaled).sum(axis=2)[attention_mask > 0].mean()
             rtg_loss = rtg_log_prob
 
             adv_action_loss = 0
@@ -129,21 +134,25 @@ class AdversarialDT(DecisionTransformerModel):
                 adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
                 adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
                 adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
+
+            # need to issue predictions to train the SDT on
+            rtg_pred_upscaled = min_ep_return + rtg_dist.rsample() * (max_ep_return - min_ep_return)
                 
             return {"loss": rtg_loss + adv_action_loss,
                     "rtg_log_prob": rtg_log_prob, 
                     "rtg_loss": rtg_loss,
                     "adv_action_loss": adv_action_loss,
-                    "mu": mu_preds,
-                    "sigma": sigma_preds,
-                    "rtg_preds": rtg_dist.rsample()}
+                    "alpha": alpha_preds,
+                    "epsilon": epsilon_preds,
+                    "rtg_preds": rtg_pred_upscaled}
         else:
             # return predictions
+            rtg_pred_upscaled = min_ep_return + rtg_dist.mean * (max_ep_return - min_ep_return)
             if not return_dict:
-                return (rtg_dist.mean, adv_action_preds)
+                return (rtg_pred_upscaled, adv_action_preds)
 
             return DecisionTransformerOutput(
-                rtg_preds=rtg_dist.mean,
+                rtg_preds=rtg_pred_upscaled,
                 adv_action_preds=adv_action_preds,
                 # hidden_states=encoder_outputs.hidden_states,
                 # last_hidden_state=encoder_outputs.last_hidden_state,
@@ -166,7 +175,7 @@ class StochasticDT(DecisionTransformerModel):
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
         self.predict_mu = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()]))
+            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()] if config.action_tanh else []))
         )
         self.predict_sigma = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdSquashFunc()] + [ExpFunc()])
@@ -342,12 +351,12 @@ class TwoAgentRobustDT(DecisionTransformerModel):
 
             dist_params = {}
             if adt_out is not None:
-                for i in range(adt_out['mu'].shape[2]):
-                    dist_params[f"mu_{i}"] =  torch.mean(adt_out['mu'][:, :, i]).item()
-                    dist_params[f"sigma_{i}"] =  torch.mean(adt_out['sigma'][:, :, i]).item()
+                for i in range(adt_out['alpha'].shape[2]):
+                    dist_params[f"alpha_{i}"] =  torch.mean(adt_out['alpha'][:, :, i]).item()
+                    dist_params[f"epsilon_{i}"] =  torch.mean(adt_out['epsilon'][:, :, i]).item()
 
             if sdt_out is not None:
-                for i in range(sdt_out['mu'].shape[2]):
+                for i in range(sdt_out['sigma'].shape[2]):
                     dist_params[f"mu_{i}"] =  torch.mean(sdt_out['mu'][:, :, i]).item()
                     dist_params[f"sigma_{i}"] =  torch.mean(sdt_out['sigma'][:, :, i]).item()
         
