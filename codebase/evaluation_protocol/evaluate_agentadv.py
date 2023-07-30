@@ -91,7 +91,7 @@ def evaluate(
                 if t == 1:
                     print(f"Starting episode {run_idx}. Checking that adversary is active. Adversarial action: ", adv_action)
 
-                cumul_action = (pr_action + adv_action)
+                cumul_action = (pr_action + adv_action).squeeze()
                 state, reward, done, trunc, _ = env.step(cumul_action)
 
                 pr_model.update_history(

@@ -90,8 +90,10 @@ def evaluate(
             else:
                 _, adv_actions = adv_model.get_batch_actions(states=start_states)
             
-            if t == 1:
+            if t == 1 and adv_model_name not in ['zero', 'zeroagent']:
                 print(f"Starting timestep {t}. Checking that adversary is active. Adversarial action example: ", adv_actions[0])
+            elif t == 1 and adv_model_name in ['zero', 'zeroagent']:
+                print(f"Starting timestep {t}. Checking that adversary is not active. Adversarial action example: ", adv_actions[0])
 
             cumul_actions = (pr_actions + adv_actions)
             states = np.zeros_like(start_states)

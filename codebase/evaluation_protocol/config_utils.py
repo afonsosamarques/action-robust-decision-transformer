@@ -130,6 +130,8 @@ def load_model(model_type, model_to_use, model_path):
     elif model_type == "zero" or model_type == "zeroagent":
         # really we could just pass in the action space, but this is more similar to the rest of it
         # just need a json file with the action space of the given environment we are evaluating on
+        with open(model_path, 'rb') as f:
+            model_params = json.load(f)
         return ZeroAgentWrapper(ZeroAgent(model_params['action_space'])), True
     else:
         raise Exception(f"Model {model_to_use} of type {model_type} not available.")

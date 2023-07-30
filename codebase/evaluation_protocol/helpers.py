@@ -38,8 +38,20 @@ class EvalWrapper:
     def new_eval(self, *args, **kwargs):
         pass
 
+    def new_batch_eval(self, *args, **kwargs):
+        pass
+
     def get_action(self, *args, **kwargs):
-        return self.model.get_action(*args, **kwargs)
+        return self.model.get_actions(*args, **kwargs)
+    
+    def get_batch_actions(self,  *args, **kwargs):
+        return self.model.get_actions(*args, **kwargs)
     
     def update_history(self, *args, **kwargs):
+        pass
+
+    def update_batch_history(self, *args, **kwargs):
+        pass
+
+    def to(self, device=torch.device('cpu')):
         pass

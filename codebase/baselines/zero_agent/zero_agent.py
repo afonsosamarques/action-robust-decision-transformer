@@ -9,18 +9,7 @@ class ZeroAgentWrapper(EvalWrapper):
         super().__init__(model)
 
     def eval(self, *args, **kwargs):
-        # necessary to simplify evaluation code
         return self
-
-    def to(self, device=torch.device('cpu')):
-        # necessary to simplify evaluation code
-        pass
-
-    def get_action(self, *args, **kwargs):
-        return self.model.get_action(*args, **kwargs)
-    
-    def get_batch_actions(self, *args, batch_size=1, **kwargs):
-        return self.model.get_actions(*args, **kwargs)
 
 
 class ZeroAgent:
@@ -30,9 +19,9 @@ class ZeroAgent:
     def eval(self, *args, **kwargs):
         return ZeroAgentWrapper(self)
 
-    def to(self, device):
-        pass
-
     def get_actions(self, *args, batch_size=1, **kwargs):
         return np.zeros((batch_size, self.action_space)), np.zeros((batch_size, self.action_space))
+    
+    def to(self, device):
+        pass
     

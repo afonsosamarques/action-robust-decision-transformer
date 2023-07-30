@@ -97,7 +97,7 @@ def evaluate(
                 # run episode
                 for t in range(env_steps):
                     pr_action, adv_action = model.get_action(state=state)
-                    state, reward, done, trunc, _ = env.step(pr_action)
+                    state, reward, done, trunc, _ = env.step(pr_action.squeeze())
                     model.update_history(
                         pr_action=pr_action, 
                         adv_action=adv_action, 
