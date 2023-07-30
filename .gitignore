@@ -1,5 +1,5 @@
 #  Add-hoc gitignore for python project
-datasets/
+datasets*/
 datasets-raw/
 datasets-to-push/
 agents*/
