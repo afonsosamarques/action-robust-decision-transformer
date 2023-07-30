@@ -1,4 +1,4 @@
-$ -S /bin/bash
+#$ -S /bin/bash
 
 #$ -N evaluation_agentadv_omni
 #$ -l gpu=1

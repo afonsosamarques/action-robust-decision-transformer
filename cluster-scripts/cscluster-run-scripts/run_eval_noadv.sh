@@ -1,4 +1,4 @@
-$ -S /bin/bash
+#$ -S /bin/bash
 
 #$ -N evaluation_noadv
 #$ -l gpu=1
