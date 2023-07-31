@@ -24,10 +24,10 @@ class AdversarialDT(DecisionTransformerModel):
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
         self.predict_mu = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()]))
+            *([torch.nn.Linear(config.hidden_size, 1)] + ([torch.nn.Tanh()]))
         )
         self.predict_sigma = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdSquashFunc()] + [ExpFunc()])
+            *([torch.nn.Linear(config.hidden_size, 1)] + [StdSquashFunc()] + [ExpFunc()])
         )
         self.predict_adv_action = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()]))

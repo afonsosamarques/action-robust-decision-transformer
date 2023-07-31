@@ -229,7 +229,7 @@ class DTEvalWrapper(EvalWrapper):
         self.t = 0
         self.actions = torch.zeros((self.batch_size, 0, self.model.config.act_dim), device=self.device, dtype=torch.float32)
         self.rewards = torch.zeros((self.batch_size, 0), device=self.device, dtype=torch.float32)
-        self.timesteps = torch.empty((self.batch_size, 1), device=self.device, dtype=torch.long)
+        self.timesteps = torch.zeros((self.batch_size, 1), device=self.device, dtype=torch.long)
 
     def get_action(self, **kwargs):
         if not self.has_started:
@@ -328,7 +328,7 @@ class ADTEvalWrapper(EvalWrapper):
         self.pr_actions = torch.zeros((self.batch_size, 0, self.model.config.pr_act_dim), device=self.device, dtype=torch.float32)
         self.adv_actions = torch.zeros((self.batch_size, 0, self.model.config.adv_act_dim), device=self.device, dtype=torch.float32)
         self.rewards = torch.zeros((self.batch_size, 0), device=self.device, dtype=torch.float32)
-        self.timesteps = torch.empty((self.batch_size, 1), device=self.device, dtype=torch.long)
+        self.timesteps = torch.zeros((self.batch_size, 1), device=self.device, dtype=torch.long)
 
     def get_action(self, pr_action=None, **kwargs):
         if not self.has_started:
