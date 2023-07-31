@@ -126,6 +126,8 @@ class AdversarialDT(DecisionTransformerModel):
         if is_train:
             # return loss
             rtg_downscaled = (returns_to_go - min_ep_return) / (max_ep_return - min_ep_return)
+            rtg_downscaled = torch.min(torch.ones_like(rtg_downscaled) - 1e-8, 
+                                       torch.max(torch.ones_like(rtg_downscaled) + 1e-8, rtg_downscaled))
             rtg_log_prob = -rtg_dist.log_prob(rtg_downscaled).sum(axis=2)[attention_mask > 0].mean()
             rtg_loss = rtg_log_prob
 
