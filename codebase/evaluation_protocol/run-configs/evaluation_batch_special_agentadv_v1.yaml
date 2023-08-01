@@ -1,0 +1,17 @@
+env_type: "halfcheetah"  # halfcheetah, hopper, walker2d
+run_type: "test"  # "core", "pipeline", or "test"
+hf_project: 'Experiment-2' # personal project, or ARDT-Project, or ARDT-Internal
+
+trained_model_names: ['ardt-full-dataset_combo_train_halfcheetah_special-3107_2322', 'ardt-simplest-dataset_combo_train_halfcheetah_special-2907_1234', 'dt-dataset_combo_train_halfcheetah_special-3107_1055']
+trained_model_types: ['ardt-full', 'ardt-simplest', 'dt']
+trained_model_paths: ['hf', 'hf', 'hf']
+
+eval_type: "batch_agent_adv"  # no_adv, env_adv, agent_adv, batch_agent_adv, batch_noadv
+eval_steps: 1000  # 1000 is the default in DT
+eval_target_return: 2000  # note this should depend on environment and steps!! 12k is for halfcheetah and 1000 steps for example
+eval_iters: 50  # ensure robust evaluation
+
+# only if using an explicit adversary!! i.e. eval_type = "agent_adv"
+adv_model_names: ['ardt-full-dataset_combo_train_halfcheetah_special-3107_2322', 'ardt-simplest-dataset_combo_train_halfcheetah_special-2907_1234', 'zeroagent']
+adv_model_types: ['ardt-full', 'ardt-simplest', 'zeroagent']
+adv_model_paths: ['hf', 'hf', 'evaluation_protocol/trained-models/zeroagent/model_halfcheetah.json']
