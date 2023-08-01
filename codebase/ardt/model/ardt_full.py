@@ -4,7 +4,7 @@ import torch
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
 from .ardt_utils import DecisionTransformerOutput, ADTEvalWrapper
-from .ardt_utils import BetaParamsSquashFunc, StdSquashFunc, ExpFunc
+from .ardt_utils import StdSquashFunc, ExpFunc
 from .ardt_utils import initialise_weights
 
 
@@ -27,17 +27,16 @@ class AdversarialDT(DecisionTransformerModel):
             *([torch.nn.Linear(config.hidden_size, 1)] + ([torch.nn.Tanh()]))
         )
         self.predict_sigma = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, 1)] + [StdSquashFunc()] + [ExpFunc()])
+            *([torch.nn.Linear(config.hidden_size, 1)] + [StdSquashFunc(min_log_std=-5.0, max_log_std=0.7)] + [ExpFunc()])
         )
         self.predict_adv_action = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()]))
         )
 
+        self.post_init()
         self.predict_mu.apply(initialise_weights)
         self.predict_sigma.apply(initialise_weights)
         self.predict_adv_action.apply(initialise_weights)
-
-        self.post_init()
 
     def forward(
         self,
@@ -121,8 +120,8 @@ class AdversarialDT(DecisionTransformerModel):
 
         if is_train:
             # return loss
-            rtg_log_prob = -rtg_dist.log_prob(returns_to_go).sum(axis=2)[attention_mask > 0].mean()
-            rtg_loss = rtg_log_prob
+            rtg_log_prob = rtg_dist.log_prob(returns_to_go).sum(axis=2)[attention_mask > 0].mean()
+            rtg_loss = -rtg_log_prob
 
             adv_action_loss = 0
             if pred_adv:
@@ -251,9 +250,9 @@ class StochasticDT(DecisionTransformerModel):
 
         if is_train:
             # return loss
-            pr_action_log_prob = -pr_action_dist.log_prob(pr_actions).sum(axis=2)[attention_mask > 0].mean()
-            pr_action_entropy = -pr_action_dist.entropy().mean()
-            pr_action_loss = pr_action_log_prob + self.config.lambda1 * pr_action_entropy
+            pr_action_log_prob = pr_action_dist.log_prob(pr_actions).sum(axis=2)[attention_mask > 0].mean()
+            pr_action_entropy = pr_action_dist.entropy().mean()
+            pr_action_loss = -(pr_action_log_prob + self.config.lambda1 * pr_action_entropy)
 
             return {"loss": pr_action_loss,
                     "pr_action_log_prob": pr_action_log_prob, 
@@ -343,8 +342,8 @@ class TwoAgentRobustDT(DecisionTransformerModel):
             dist_params = {}
             if adt_out is not None:
                 for i in range(adt_out['mu'].shape[2]):
-                    dist_params[f"mu_{i}"] =  torch.mean(adt_out['mu'][:, :, i]).item()
-                    dist_params[f"sigma_{i}"] =  torch.mean(adt_out['sigma'][:, :, i]).item()
+                    dist_params[f"mu_{i}_rtg"] =  torch.mean(adt_out['mu'][:, :, i]).item()
+                    dist_params[f"sigma_{i}_rtg"] =  torch.mean(adt_out['sigma'][:, :, i]).item()
 
             if sdt_out is not None:
                 for i in range(sdt_out['mu'].shape[2]):

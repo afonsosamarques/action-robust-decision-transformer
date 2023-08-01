@@ -33,11 +33,10 @@ class AdversarialDT(DecisionTransformerModel):
             *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()]))
         )
 
+        self.post_init()
         self.predict_alpha.apply(initialise_weights)
         self.predict_epsilon.apply(initialise_weights)
         self.predict_adv_action.apply(initialise_weights)
-
-        self.post_init()
 
     def forward(
         self,
