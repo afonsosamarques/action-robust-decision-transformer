@@ -386,6 +386,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 adv_actions=adv_actions,
                 rewards=rewards,
                 returns_to_go=returns_to_go,
+                returns_to_go_scaled=returns_to_go,
                 timesteps=timesteps,
                 attention_mask=attention_mask,
                 output_hidden_states=output_hidden_states,
@@ -404,6 +405,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 adv_actions=adv_actions,
                 rewards=rewards,
                 returns_to_go=rtg_preds,
+                returns_to_go_scaled=rtg_preds,
                 timesteps=timesteps,
                 attention_mask=attention_mask,
                 output_hidden_states=output_hidden_states,
@@ -432,11 +434,11 @@ class TwoAgentRobustDT(DecisionTransformerModel):
     def get_actions(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device, batch_size=1):
         # NOTE this implementation does not condition on past rewards
         # reshape to model input format
-        states = states.reshape(1, -1, self.config.state_dim)
-        pr_actions = pr_actions.reshape(1, -1, self.config.pr_act_dim)
-        adv_actions = adv_actions.reshape(1, -1, self.config.adv_act_dim)
-        returns_to_go = returns_to_go.reshape(1, -1, 1)
-        timesteps = timesteps.reshape(1, -1)
+        states = states.reshape(batch_size, -1, self.config.state_dim)
+        pr_actions = pr_actions.reshape(batch_size, -1, self.config.pr_act_dim)
+        adv_actions = adv_actions.reshape(batch_size, -1, self.config.adv_act_dim)
+        returns_to_go = returns_to_go.reshape(batch_size, -1, 1)
+        timesteps = timesteps.reshape(batch_size, -1)
 
         # normalisation constants
         state_mean = torch.from_numpy(np.array(self.config.state_mean).astype(np.float32)).to(device=device)
