@@ -41,11 +41,11 @@ class EvalWrapper:
     def new_batch_eval(self, *args, **kwargs):
         pass
 
-    def get_action(self, *args, **kwargs):
-        return self.model.get_actions(*args, **kwargs)
+    def get_actions(self, *args, **kwargs):
+        pass
     
     def get_batch_actions(self,  *args, **kwargs):
-        return self.model.get_actions(*args, **kwargs)
+        pass
     
     def update_history(self, *args, **kwargs):
         pass

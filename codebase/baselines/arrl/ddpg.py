@@ -126,18 +126,17 @@ class DDPG:
                 mu = mu.data
                 if action_noise is not None:
                     mu += self.Tensor(action_noise()).to(self.device)
-
-                pr_mu = mu.clamp(-1, 1) * (1 - self.alpha)
-                mu = pr_mu
+                
+                pr_mu = mu.clamp(-1, 1)
+                mu = pr_mu * (1 - self.alpha)
 
                 if param_noise is not None:
                     adv_mu = self.adversary_perturbed(state)
                 else:
                     adv_mu = self.adversary(state)
 
-                adv_mu = adv_mu.data.clamp(-1, 1) * self.alpha
-
-                mu += adv_mu
+                adv_mu = adv_mu.data.clamp(-1, 1)
+                mu += adv_mu  * self.alpha
             else:  # mdp_type == 'pr_mdp':
                 #
                 if param_noise is not None:
@@ -371,10 +370,14 @@ class DDPG:
 class DDPGEvalWrapper(EvalWrapper):
     def __init__(self, model, mdp_type=None, **kwargs):
         super().__init__(model)
-        assert mdp_type in ['pr_mdp', 'nr_mdp'], "Need to specify valid mdp type."
         self.mdp_type = mdp_type
     
     def get_action(self, state):
         state = self.model.Tensor(state)
         action, pr_action, adv_action = self.model.select_action(state, mdp_type=self.mdp_type)
         return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()
+
+    def get_batch_actions(self, states):
+        states = self.model.Tensor(states)
+        actions, pr_actions, adv_actions = self.model.select_action(states, mdp_type=self.mdp_type)
+        return pr_actions.detach().cpu().numpy(), adv_actions.detach().cpu().numpy()

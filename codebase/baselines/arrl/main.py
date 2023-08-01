@@ -62,8 +62,8 @@ if __name__ == "__main__":
     parser.add_argument('--number_of_train_steps', type=int, default=50, metavar='N')
     parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
                         help='size of replay buffer (default: 1000000)')
-    parser.add_argument('--method', default='mdp', choices=['mdp', 'pr_mdp', 'nr_mdp'])
-    parser.add_argument('--ratio', default=10, type=int)
+    parser.add_argument('--method', default='nr_mdp', choices=['mdp', 'pr_mdp', 'nr_mdp'])
+    parser.add_argument('--ratio', default=1, type=int)
     parser.add_argument('--flip_ratio', default=False, action='store_true')
     parser.add_argument('--alpha', type=float, default=0.1,
                         help='control given to adversary (default: 0.1)')
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     vis = None
 
     train_steps = 0
-    args.ratio += 1
+    args.ratio += 1  # for computational reasons (modulo operation)
     hacky_store = defaultdict(list)
     ep = 0
     hacky_indict = None

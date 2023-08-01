@@ -96,6 +96,7 @@ def evaluate(
                 print(f"Starting timestep {t}. Checking that adversary is not active. Adversarial action example: ", adv_actions[0])
 
             cumul_actions = (pr_actions + adv_actions)
+            
             states = np.zeros_like(start_states)
             rewards = np.zeros(eval_iters)
             for i, env in enumerate(envs):

@@ -12,6 +12,7 @@ from torch.distributions import uniform
 from .ddpg import DDPG
 from .normalized_actions import NormalizedActions
 from .utils import load_model
+from .main import find_root_dir
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--eval_type', default='model',
@@ -20,13 +21,13 @@ parser.add_argument('--hidden_size', type=int, default=64, metavar='N',
                     help='number of neurons in the hidden layers (default: 64)')
 args = parser.parse_args()
 
-base_dir = os.getcwd() + '/models/'
+base_dir = find_root_dir() + '/models/'
 
 
 def eval_model(_env, alpha):
     total_reward = 0
     with torch.no_grad():
-        state = agent.Tensor([_env.reset()])
+        state = agent.Tensor([_env.reset()[0]])
         while True:
             action = agent.select_action(state, mdp_type='mdp')
             if random.random() < alpha:
@@ -40,13 +41,11 @@ def eval_model(_env, alpha):
                 break
     return total_reward
 
-
 test_episodes = 100
 for env_name in os.listdir(base_dir):
     env = NormalizedActions(gym.make(env_name))
-
     agent = DDPG(gamma=0.99, tau=0.01, hidden_size=args.hidden_size, num_inputs=env.observation_space.shape[0],
-                 action_space=env.action_space, train_mode=False, alpha=0, replay_size=0, normalize_obs=True)
+                 action_space=env.action_space.shape[0], train_mode=False, alpha=0, replay_size=0, normalize_obs=True)
     noise = uniform.Uniform(agent.Tensor([-1.0]), agent.Tensor([1.0]))
 
     basic_bm = copy.deepcopy(env.env.env.model.body_mass.copy())
@@ -61,7 +60,7 @@ for env_name in os.listdir(base_dir):
 
                 run_number = 0
                 dir = noise_dir + subdir + '/' + str(run_number)
-                if os.path.exists(noise_dir + subdir + '/4') \
+                if os.path.exists(noise_dir + subdir + '/2') \
                         and not os.path.isfile(noise_dir + subdir + '/results_' + args.eval_type):
                     while os.path.exists(dir):
                         load_model(agent=agent, basedir=dir)
