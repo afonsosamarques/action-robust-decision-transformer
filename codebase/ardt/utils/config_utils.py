@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from ..model.ardt_simplest import SimpleRobustDT
 from ..model.ardt_vanilla import SingleAgentRobustDT
-from ..model.ardt_full import TwoAgentRobustDT
+from ..model.ardt_full_beta import TwoAgentRobustDT
 from ..model.trainable_dt import TrainableDT
 
 from .helpers import find_root_dir
