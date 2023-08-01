@@ -14,7 +14,7 @@ model_config:
   agent_type: "ardt-full"  # dt, ardt-simplest, ardt-vanilla, ardt-full
   context_size: [20]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
   lambda1: [0.1, 1.0, 10.0]  # these are for different parameter combinations to try!!
-  lambda2: [100, 500, 1000]  # these are for different parameter combinations to try!!!
+  lambda2: [50, 500, 1000]  # these are for different parameter combinations to try!!!
 
 training_config:
   train_steps: 4  # 6 => 10**6
