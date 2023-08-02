@@ -165,8 +165,8 @@ if __name__ == "__main__":
             nb_epochs = 500
 
 
-        state = torch.tensor([env.reset()[0]])
-        eval_state = torch.tensor([eval_env.reset()[0]])
+        state = torch.tensor([env.reset()[0]], dtype=torch.float32)
+        eval_state = torch.tensor([eval_env.reset()[0]], dtype=torch.float32)
 
         eval_reward = 0
         episode_reward = 0
@@ -197,10 +197,10 @@ if __name__ == "__main__":
                         total_steps += 1
                         episode_reward += reward
 
-                        action = torch.tensor(action)
+                        action = torch.tensor(action, dtype=torch.float32)
                         mask = torch.tensor([not done])
-                        next_state = torch.tensor([next_state])
-                        reward = torch.tensor([reward])
+                        next_state = torch.tensor([next_state], dtype=torch.float32)
+                        reward = torch.tensor([reward], dtype=torch.float32)
 
                         agent.store_transition(state, action, mask, next_state, reward)
                         if hacky_indict is not None:
@@ -215,7 +215,7 @@ if __name__ == "__main__":
                             episode_reward = 0
                             ep += 1
                             hacky_indict = None
-                            state = torch.tensor([env.reset()[0]])
+                            state = torch.tensor([env.reset()[0]], dtype=torch.float32)
                             reset_noise(agent, normalnoise)
 
                 if len(agent.memory) > args.batch_size:
@@ -257,12 +257,12 @@ if __name__ == "__main__":
                         next_eval_state, reward, done, trunc, info = eval_env.step(action.cpu().numpy()[0])
                         eval_reward += reward
 
-                        next_eval_state = torch.tensor([next_eval_state])
+                        next_eval_state = torch.tensor([next_eval_state], dtype=torch.float32)
 
                         eval_state = next_eval_state
                         if done or trunc:
                             results_dict['eval_rewards'].append((total_steps, eval_reward))
-                            eval_state = torch.tensor([eval_env.reset()[0]])
+                            eval_state = torch.tensor([eval_env.reset()[0]], dtype=torch.float32)
                             eval_reward = 0
                 # save the model 
                 save_model(agent=agent, actor=agent.actor, adversary=agent.adversary, basedir=base_dir, obs_rms=agent.obs_rms,

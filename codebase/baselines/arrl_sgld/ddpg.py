@@ -40,7 +40,7 @@ def get_free_gpu():
 def normalize(x, stats, device):
     if stats is None:
         return x
-    return (x - torch.Tensor(stats.mean).to(device)) / torch.Tensor(stats.var).sqrt().to(device)
+    return (x - torch.tensor(stats.mean, dtype=torch.float32).to(device)) / torch.tensor(stats.var, dtype=torch.float32).sqrt().to(device)
 
 
 def denormalize(x, stats):
@@ -147,7 +147,7 @@ class DDPG:
                 mu = self.actor(state)
             mu = mu.data
             if action_noise is not None:
-                mu += torch.tensor(action_noise()).to(self.device)
+                mu += torch.tensor(action_noise(), dtype=torch.float32).to(self.device)
 
             pr_mu = mu.clamp(-1, 1) * (1 - self.alpha)
             mu = pr_mu
@@ -170,7 +170,7 @@ class DDPG:
 
             mu = mu.data
             if action_noise is not None:
-                mu += torch.tensor(action_noise()).to(self.device)
+                mu += torch.tensor(action_noise(), dtype=torch.float32).to(self.device)
 
             mu = mu.clamp(-1, 1)
             return mu
@@ -393,6 +393,6 @@ class DDPGSGLDEvalWrapper(EvalWrapper):
         self.mdp_type = mdp_type
     
     def get_action(self, state):
-        state = torch.tensor(state)
+        state = torch.tensor(state, dtype=torch.float32)
         action, pr_action, adv_action = self.model.select_action(state, mdp_type=self.mdp_type)
         return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()  

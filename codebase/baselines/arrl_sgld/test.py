@@ -36,7 +36,7 @@ else:
 def eval_model(_env, alpha):
     total_reward = 0
     with torch.no_grad():
-        state = torch.tensor([_env.reset()])
+        state = torch.tensor([_env.reset()], dtype=torch.float32)
         while True:
             action = agent.select_action(state, mdp_type='mdp')
             if random.random() < alpha:
@@ -45,7 +45,7 @@ def eval_model(_env, alpha):
             state, reward, done, _ = _env.step(action.cpu().numpy()[0])
             total_reward += reward
 
-            state = torch.tensor([state])
+            state = torch.tensor([state], dtype=torch.float32)
             if done:
                 break
     return total_reward
@@ -57,7 +57,7 @@ for env_name in [args.env]:#os.listdir(base_dir):
     env = NormalizedActions(gym.make(env_name))
 
     agent = DDPG(beta=0.9, epsilon=0, learning_rate=1e-4, gamma=0.99, tau=0.01, hidden_size_dim0=args.hidden_size, hidden_size_dim1=args.hidden_size, num_inputs=env.observation_space.shape[0], action_space=env.action_space, train_mode=False, alpha=0, replay_size=0, optimizer = 0, two_player=args.two_player, normalize_obs=True)
-    noise = uniform.Uniform(torch.tensor([-1.0]), torch.tensor([1.0]))
+    noise = uniform.Uniform(torch.tensor([-1.0], dtype=torch.float32), torch.tensor([1.0], dtype=torch.float32))
 
     basic_bm = copy.deepcopy(env.env.env.model.body_mass.copy())
 
