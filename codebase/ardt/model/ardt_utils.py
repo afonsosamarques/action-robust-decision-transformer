@@ -182,6 +182,16 @@ class BetaParamsSquashFunc(torch.nn.Module):
         return min_log + 0.5 * (max_log - min_log) * (torch.tanh(p) + 1.0)
 
 
+class StdReturnSquashFunc(torch.nn.Module):
+    # HACK HACK HACK HACK
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, p, min_log_std=-5.0, max_log_std=0.7):
+        # defaults chosen to fit returns distribution, taking into account the exponentiation after as well 
+        return min_log_std + 0.5 * (max_log_std - min_log_std) * (torch.tanh(p) + 1.0)
+    
+
 class StdSquashFunc(torch.nn.Module):
     def __init__(self):
         super().__init__()

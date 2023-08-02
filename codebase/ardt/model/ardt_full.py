@@ -4,7 +4,7 @@ import torch
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
 from .ardt_utils import DecisionTransformerOutput, ADTEvalWrapper
-from .ardt_utils import StdSquashFunc, ExpFunc
+from .ardt_utils import StdReturnSquashFunc, StdSquashFunc, ExpFunc
 from .ardt_utils import initialise_weights
 
 
@@ -27,7 +27,7 @@ class AdversarialDT(DecisionTransformerModel):
             *([torch.nn.Linear(config.hidden_size, 1)] + ([torch.nn.Tanh()]))
         )
         self.predict_sigma = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, 1)] + [StdSquashFunc(min_log_std=-5.0, max_log_std=0.7)] + [ExpFunc()])
+            *([torch.nn.Linear(config.hidden_size, 1)] + [StdReturnSquashFunc()] + [ExpFunc()])
         )
         self.predict_adv_action = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()]))
