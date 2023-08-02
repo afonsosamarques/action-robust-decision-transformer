@@ -51,17 +51,14 @@ def denormalize(x, stats):
 
 class DDPG:
     def __init__(self, beta, epsilon, learning_rate, gamma, tau, hidden_size_dim0, hidden_size_dim1, num_inputs, action_space, train_mode, alpha, replay_size,
-                 optimizer, two_player, normalize_obs=True, normalize_returns=False, critic_l2_reg=1e-2):
-        if torch.cuda.is_available():
+                 optimizer, two_player, normalize_obs=True, normalize_returns=False, critic_l2_reg=1e-2, device=None):
+        if device != None:
+            self.device = device
+        elif torch.cuda.is_available():
             self.device = torch.device('cuda')
             torch.backends.cudnn.enabled = False
-            self.Tensor = torch.cuda.FloatTensor
-        # elif torch.backends.mps.is_available():
-        #     self.device = torch.device('mps')
-        #     self.Tensor = torch.Tensor
         else:
             self.device = torch.device('cpu')
-            self.Tensor = torch.FloatTensor
 
         self.alpha = alpha
         self.train_mode = train_mode
@@ -150,7 +147,7 @@ class DDPG:
                 mu = self.actor(state)
             mu = mu.data
             if action_noise is not None:
-                mu += self.Tensor(action_noise()).to(self.device)
+                mu += torch.tensor(action_noise()).to(self.device)
 
             pr_mu = mu.clamp(-1, 1) * (1 - self.alpha)
             mu = pr_mu
@@ -173,7 +170,7 @@ class DDPG:
 
             mu = mu.data
             if action_noise is not None:
-                mu += self.Tensor(action_noise()).to(self.device)
+                mu += torch.tensor(action_noise()).to(self.device)
 
             mu = mu.clamp(-1, 1)
             return mu
@@ -283,7 +280,6 @@ class DDPG:
     def update_non_robust(self, state_batch, action_batch, reward_batch, mask_batch, next_state_batch):
         
         # TRAIN CRITIC
-
         next_action_batch = self.actor_target(next_state_batch)
         next_state_action_values = self.critic_target(next_state_batch, next_action_batch)
 
@@ -397,6 +393,6 @@ class DDPGSGLDEvalWrapper(EvalWrapper):
         self.mdp_type = mdp_type
     
     def get_action(self, state):
-        state = self.model.Tensor(state)
+        state = torch.tensor(state)
         action, pr_action, adv_action = self.model.select_action(state, mdp_type=self.mdp_type)
         return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()  

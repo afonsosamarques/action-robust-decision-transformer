@@ -53,8 +53,8 @@ if __name__ == "__main__":
                         help='number of epochs (default: None)')
     parser.add_argument('--num_epochs_cycles', type=int, default=20, metavar='N')
     parser.add_argument('--num_rollout_steps', type=int, default=100, metavar='N')
-    parser.add_argument('--num_steps', type=int, default=2000000, metavar='N',
-                        help='number of training steps (default: 2000000)')
+    parser.add_argument('--num_steps', type=int, default=500000, metavar='N',
+                        help='number of training steps (default: 500000)')
     parser.add_argument('--hidden_size_dim0', type=int, default=64, metavar='N',
                         help='number of neurons in the hidden layers (default: 64)')
     parser.add_argument('--hidden_size_dim1', type=int, default=64)
@@ -74,11 +74,13 @@ if __name__ == "__main__":
     parser.add_argument('--one_player', default=False, action='store_true')
     parser.add_argument('--seeds', type=int, default=1)
     parser.add_argument('--Kt', type=int, default=15)
+    parser.add_argument('--device', type=str, default='cpu')
 
     args = parser.parse_args()
     args.env_name = load_env_name(args.env_name)
     args.action_noise = not args.no_action_noise
     args.two_player = not args.one_player
+    args.device = torch.device(args.device) if args.device != '' else None
 
     for seed in range(args.seeds):
         # build the folder the store the results
@@ -92,7 +94,8 @@ if __name__ == "__main__":
                      hidden_size_dim0=args.hidden_size_dim0, hidden_size_dim1=args.hidden_size_dim1, 
                      num_inputs=env.observation_space.shape[0], 
                      action_space=env.action_space, 
-                     train_mode=True, alpha=args.alpha, replay_size=args.replay_size, optimizer=args.optimizer, two_player=args.two_player)
+                     train_mode=True, alpha=args.alpha, replay_size=args.replay_size, optimizer=args.optimizer, two_player=args.two_player,
+                     device=args.device)
 
         results_dict = {'eval_rewards': [],
                     'value_losses': [],
@@ -162,8 +165,8 @@ if __name__ == "__main__":
             nb_epochs = 500
 
 
-        state = agent.Tensor([env.reset()[0]])
-        eval_state = agent.Tensor([eval_env.reset()[0]])
+        state = torch.tensor([env.reset()[0]])
+        eval_state = torch.tensor([eval_env.reset()[0]])
 
         eval_reward = 0
         episode_reward = 0
@@ -194,10 +197,10 @@ if __name__ == "__main__":
                         total_steps += 1
                         episode_reward += reward
 
-                        action = agent.Tensor(action)
-                        mask = agent.Tensor([not done])
-                        next_state = agent.Tensor([next_state])
-                        reward = agent.Tensor([reward])
+                        action = torch.tensor(action)
+                        mask = torch.tensor([not done])
+                        next_state = torch.tensor([next_state])
+                        reward = torch.tensor([reward])
 
                         agent.store_transition(state, action, mask, next_state, reward)
                         if hacky_indict is not None:
@@ -212,7 +215,7 @@ if __name__ == "__main__":
                             episode_reward = 0
                             ep += 1
                             hacky_indict = None
-                            state = agent.Tensor([env.reset()[0]])
+                            state = torch.tensor([env.reset()[0]])
                             reset_noise(agent, normalnoise)
 
                 if len(agent.memory) > args.batch_size:
@@ -254,12 +257,12 @@ if __name__ == "__main__":
                         next_eval_state, reward, done, trunc, info = eval_env.step(action.cpu().numpy()[0])
                         eval_reward += reward
 
-                        next_eval_state = agent.Tensor([next_eval_state])
+                        next_eval_state = torch.tensor([next_eval_state])
 
                         eval_state = next_eval_state
                         if done or trunc:
                             results_dict['eval_rewards'].append((total_steps, eval_reward))
-                            eval_state = agent.Tensor([eval_env.reset()[0]])
+                            eval_state = torch.tensor([eval_env.reset()[0]])
                             eval_reward = 0
                 # save the model 
                 save_model(agent=agent, actor=agent.actor, adversary=agent.adversary, basedir=base_dir, obs_rms=agent.obs_rms,
