@@ -3,10 +3,10 @@ import datetime
 from dataclasses import dataclass
 from pydantic import BaseModel, Field
 
-from ..model.ardt_simplest import SimpleRobustDT
-from ..model.ardt_vanilla import SingleAgentRobustDT
-from ..model.ardt_full import TwoAgentRobustDT
-from ..model.trainable_dt import TrainableDT
+from ..models.ardt_simplest import SimpleRobustDT
+from ..models.ardt_vanilla import SingleAgentRobustDT
+from ..models.ardt_full import TwoAgentRobustDT
+from ..models.trainable_dt import TrainableDT
 
 from .helpers import find_root_dir
 

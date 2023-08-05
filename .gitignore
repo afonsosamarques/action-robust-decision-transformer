@@ -3,7 +3,6 @@ datasets*/
 datasets-raw/
 datasets-to-push/
 agents*/
-models*/
 trained-models*/
 eval-outputs*/
 env-sims*/

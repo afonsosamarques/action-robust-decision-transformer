@@ -4,8 +4,8 @@ import numpy as np
 
 
 def save_model(agent, actor, adversary, obs_rms, rew_rms, basedir=None):
-    if not os.path.exists('models/'):
-        os.makedirs('models/')
+    if not os.path.exists('{}/agents/'.format(basedir)):
+        os.makedirs('{}/agents/'.format(basedir))
 
     actor_path = "{}/ddpg_actor".format(basedir)
     adversary_path = "{}/ddpg_adversary".format(basedir)

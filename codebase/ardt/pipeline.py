@@ -8,12 +8,14 @@ import torch
 import wandb
 import yaml
 
+from requests.exceptions import HTTPError, ConnectionError
+
 from datasets import load_dataset, load_from_disk
 from huggingface_hub import login
 from transformers import DecisionTransformerConfig, Trainer, TrainingArguments
 
 from evaluation_protocol.evaluate import launch_evaluation
-from .model.ardt_utils import DecisionTransformerGymDataCollator
+from .models.ardt_utils import DecisionTransformerGymDataCollator
 from .utils.config_utils import check_pipelinerun_config, load_run_suffix, load_env_name, load_agent, build_dataset_path, build_model_name
 from .utils.helpers import find_root_dir
 from .utils.logger import Logger
@@ -146,8 +148,16 @@ def train(
 if __name__ == "__main__":
     #
     # admin
-    login(token=HF_WRITE_TOKEN)
     is_offline_log = False
+    try:
+        login(token=HF_WRITE_TOKEN)
+    except HTTPError as e:
+        is_offline_log = True
+        print("Could not connect to HuggingFace; proceeding without, will fail if required.")
+    except ConnectionError as e:
+        is_offline_log = True
+        print("Could not connect to HuggingFace; proceeding without, will fail if required.")     
+
     try:
         wandb.login(key=WANDB_TOKEN, timeout=120)
     except Exception:

@@ -6,10 +6,10 @@ import torch
 from pydantic import BaseModel, Field
 from transformers import DecisionTransformerConfig
 
-from ardt.model.ardt_simplest import SimpleRobustDT
-from ardt.model.ardt_vanilla import SingleAgentRobustDT
-from ardt.model.ardt_full import TwoAgentRobustDT
-from ardt.model.trainable_dt import TrainableDT
+from ardt.models.ardt_simplest import SimpleRobustDT
+from ardt.models.ardt_vanilla import SingleAgentRobustDT
+from ardt.models.ardt_full import TwoAgentRobustDT
+from ardt.models.trainable_dt import TrainableDT
 from baselines.arrl.ddpg import DDPG
 from baselines.arrl_sgld.ddpg import DDPG as DDPG_SGLD
 from stable_baselines3 import PPO

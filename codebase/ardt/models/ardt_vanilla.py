@@ -8,6 +8,7 @@ from .ardt_utils import StdSquashFunc, ExpFunc
 from .ardt_utils import initialise_weights
 
 
+# FIXME: not currently being updated, do not use!!!
 class SingleAgentRobustDT(DecisionTransformerModel):
     def __init__(self, config, logger=None):
         super().__init__(config)
