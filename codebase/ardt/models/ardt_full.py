@@ -23,9 +23,7 @@ class AdversarialDT(DecisionTransformerModel):
         self.embed_adv_action = torch.nn.Linear(config.adv_act_dim, config.hidden_size)
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
-        self.predict_mu = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, 1)] + ([torch.nn.Tanh()]))
-        )
+        self.predict_mu = torch.nn.Linear(config.hidden_size, 1)
         self.predict_sigma = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, 1)] + [StdReturnSquashFunc()] + [ExpFunc()])
         )
@@ -41,7 +39,6 @@ class AdversarialDT(DecisionTransformerModel):
     def forward(
         self,
         is_train=True,
-        pred_adv=True,
         states=None,
         pr_actions=None,
         adv_actions=None,
@@ -112,22 +109,20 @@ class AdversarialDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        mu_preds = self.predict_mu(x[:, 1])  # predict next return given return and state
-        sigma_preds = self.predict_sigma(x[:, 1])  # predict next return given return and state
-        rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)
-        
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given state and pr_action
+
+        mu_preds = self.predict_mu(x[:, -1])
+        sigma_preds = self.predict_sigma(x[:, -1])  
+        rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # learn current return given everything
 
         if is_train:
             # return loss
-            rtg_log_prob = rtg_dist.log_prob(returns_to_go).sum(axis=2)[attention_mask > 0].mean()
-            rtg_loss = -rtg_log_prob
+            adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
+            adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
+            adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
-            adv_action_loss = 0
-            if pred_adv:
-                adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
-                adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
-                adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
+            rtg_log_prob = rtg_dist.log_prob(returns_to_go)[attention_mask > 0].mean()
+            rtg_loss = -rtg_log_prob
                 
             return {"loss": rtg_loss + adv_action_loss,
                     "rtg_log_prob": rtg_log_prob, 
@@ -307,7 +302,6 @@ class TwoAgentRobustDT(DecisionTransformerModel):
 
             adt_out = self.adt.forward(
                 is_train=is_train,
-                pred_adv=(self.step > self.config.warmup_steps),
                 states=states,
                 pr_actions=pr_actions,
                 adv_actions=adv_actions,
