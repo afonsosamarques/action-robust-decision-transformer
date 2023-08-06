@@ -84,7 +84,7 @@ class DecisionTransformerGymDataCollator:
         )
 
         # a batch of dataset features
-        s, a_pr, a_adv, r, d, rtg, rtg_scaled, tsteps, mask = [], [], [], [], [], [], [], [], []
+        s, a_pr, a_pr_fltd, a_adv, a_adv_fltd, r, d, rtg, rtg_scaled, tsteps, mask = [], [], [], [], [], [], [], [], [], [], []
         
         for idx in batch_idx:
             traj = self.dataset[int(idx)]
@@ -99,10 +99,18 @@ class DecisionTransformerGymDataCollator:
                 shifts = scaled_rtgs - returns_to_go
 
             # get sequences from the dataset
-            start = random.randint(0, len(traj["rewards"]) - 1)
+            start = 0
             s.append(np.array(traj["observations"][start : start + self.context_size]).reshape(1, -1, self.state_dim))
-            a_pr.append(np.array(traj["pr_actions"][start : start + self.context_size]).reshape(1, -1, self.pr_act_dim))
-            a_adv.append(np.array(traj["adv_actions"][start : start + self.context_size]).reshape(1, -1, self.adv_act_dim))
+            pr_actions = np.array(traj["pr_actions"][start : start + self.context_size]).reshape(1, -1, self.pr_act_dim)
+            a_pr.append(pr_actions)
+            pr_actions_filtered = pr_actions.copy()
+            pr_actions_filtered[:, -1, :] = np.zeros_like(pr_actions_filtered[:, -1, :])
+            a_pr_fltd.append(pr_actions_filtered)
+            adv_actions = np.array(traj["adv_actions"][start : start + self.context_size]).reshape(1, -1, self.adv_act_dim)
+            a_adv.append(adv_actions)
+            adv_actions_filtered = adv_actions.copy()
+            adv_actions_filtered[:, -1, :] = np.zeros_like(adv_actions_filtered[:, -1, :])
+            a_adv_fltd.append(adv_actions_filtered)        
             r.append(np.array(traj["rewards"][start : start + self.context_size]).reshape(1, -1, 1))
             rtg.append(np.array(traj["returns_to_go"][start : start + self.context_size]).reshape(1, -1, 1))
             rtg_scaled.append((np.array(traj["returns_to_go"][start : start + self.context_size]) + np.array(shifts[start : start + self.context_size])).reshape(1, -1, 1))
@@ -124,8 +132,16 @@ class DecisionTransformerGymDataCollator:
                 [np.ones((1, padlen, self.pr_act_dim)) * self.pr_act_lb, a_pr[-1]], axis=1,
             )
 
+            a_pr_fltd[-1] = np.concatenate(
+                [np.ones((1, padlen, self.pr_act_dim)) * self.pr_act_lb, a_pr_fltd[-1]], axis=1,
+            )
+
             a_adv[-1] = np.concatenate(
                 [np.ones((1, padlen, self.adv_act_dim)) * self.adv_act_lb, a_adv[-1]], axis=1,
+            )
+
+            a_adv_fltd[-1] = np.concatenate(
+                [np.ones((1, padlen, self.adv_act_dim)) * self.adv_act_lb, a_adv_fltd[-1]], axis=1,
             )
 
             r[-1] = np.concatenate(
@@ -154,7 +170,9 @@ class DecisionTransformerGymDataCollator:
         # stack everything into tensors and return
         s = torch.from_numpy(np.concatenate(s, axis=0)).float()
         a_pr = torch.from_numpy(np.concatenate(a_pr, axis=0)).float()
+        a_pr_fltd = torch.from_numpy(np.concatenate(a_pr_fltd, axis=0)).float()
         a_adv = torch.from_numpy(np.concatenate(a_adv, axis=0)).float()
+        a_adv_fltd = torch.from_numpy(np.concatenate(a_adv_fltd, axis=0)).float()
         r = torch.from_numpy(np.concatenate(r, axis=0)).float()
         d = torch.from_numpy(np.concatenate(d, axis=0))
         rtg = torch.from_numpy(np.concatenate(rtg, axis=0)).float()
@@ -165,7 +183,9 @@ class DecisionTransformerGymDataCollator:
         return {
             "states": s,
             "pr_actions": a_pr,
+            "pr_actions_filtered": a_pr_fltd,
             "adv_actions": a_adv,
+            "adv_actions_filtered": a_adv_fltd,
             "rewards": r,
             "returns_to_go": rtg,
             "returns_to_go_scaled": rtg_scaled,
@@ -187,7 +207,7 @@ class StdReturnSquashFunc(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, p, min_log_std=-5.0, max_log_std=0.7):
+    def forward(self, p, min_log_std=-5.0, max_log_std=0.4):
         # defaults chosen to fit returns distribution, taking into account the exponentiation after as well 
         return min_log_std + 0.5 * (max_log_std - min_log_std) * (torch.tanh(p) + 1.0)
     

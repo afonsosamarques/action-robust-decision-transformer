@@ -10,14 +10,14 @@ class OneStepEnv(gym.Env):
         super().__init__()
 
     def step(self, action):
-        if action == np.array([0, 1]):
-            return np.array([1]), 0.5, True, {}
-        elif action == np.array([1, 0]):
-            return np.array([2]), 2, True, {}
-        elif action == np.array([1, 2]):
-            return np.array([3]), 2, True, {}
-        elif action == np.array([2, 1]):
-            return np.array([4]), 1.5, True, {}
+        if np.all(action == np.array([0, 0])):
+            return np.array([1]), 0.5, True, False, {}
+        elif np.all(action == np.array([0, 1])):
+            return np.array([2]), 2, True, False, {}
+        elif np.all(action == np.array([1, 0])):
+            return np.array([3]), 2, True, False, {}
+        elif np.all(action == np.array([1, 1])):
+            return np.array([4]), 1.5, True, False, {}
 
     def reset(self, seed=0):
         super().reset(seed=seed)
@@ -26,10 +26,10 @@ class OneStepEnv(gym.Env):
 
 def create_onestep_toy_dataset(n_trajs=1000):
     traj_per_type = n_trajs // 4
-    traj_one = [[np.array([0]), 0, False, np.array([0, 0]), np.array([0, 1])], [np.array([1]), 0.5, True, np.array([0, 0]), np.array([0, 1])]]
-    traj_two = [[np.array([0]), 0, False, {}, np.array([0, 0]), np.array([1, 0])], [np.array([2]), 2, True, {}, np.array([0, 0]), np.array([1, 0])]]
-    traj_three = [[np.array([0]), 0, False, {}, np.array([1, 1]), np.array([0, 1])], [np.array([3]), 2, True, {}, np.array([1, 1]), np.array([0, 1])]]
-    traj_four = [[np.array([0]), 0, False, {}, np.array([1, 1]), np.array([1, 0])], [np.array([4]), 1.5, True, {}, np.array([1, 1]), np.array([1, 0])]]
+    traj_one = [[[0], 0, False, [0], [0]], [[1], 0.5, True, [0], [0]]]
+    traj_two = [[[0], 0, False, [0], [1]], [[2], 2, True, [0], [1]]]
+    traj_three = [[[0], 0, False, [1], [0]], [[3], 2, True, [1], [0]]]
+    traj_four = [[[0], 0, False, [1], [1]], [[4], 1.5, True, [1], [1]]]
     trajs_dict = defaultdict(list)
     for _ in range(traj_per_type):
         #
@@ -56,5 +56,6 @@ def create_onestep_toy_dataset(n_trajs=1000):
         trajs_dict['dones'].append([traj_four[0][2], traj_four[1][2]])
         trajs_dict['pr_actions'].append([traj_four[0][3], traj_four[1][3]])
         trajs_dict['adv_actions'].append([traj_four[0][4], traj_four[1][4]])
+
     dataset = Dataset.from_dict(trajs_dict)
     return dataset

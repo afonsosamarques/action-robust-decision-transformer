@@ -33,8 +33,6 @@ class SimpleRobustDT(DecisionTransformerModel):
         )
 
         self.post_init()
-        self.predict_pr_action.apply(initialise_weights)
-        self.predict_adv_action.apply(initialise_weights)
 
     def forward(
         self,
@@ -122,13 +120,13 @@ class SimpleRobustDT(DecisionTransformerModel):
 
             adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)
             adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)
-            adv_action_loss = torch.nn.functional.binary_cross_entropy(adv_action_preds, adv_action_targets)
+            adv_action_loss = self.config.lambda2 * torch.nn.functional.binary_cross_entropy(adv_action_preds, adv_action_targets)
 
             return {"loss": pr_action_loss + adv_action_loss}
         else:
             # return predictions
-            pr_action_preds = (pr_action_preds > 0.5).astype(np.int32).reshape(-1, self.config.pr_act_dim)
-            adv_action_preds = (adv_action_preds > 0.5).astype(np.int32).reshape(-1, self.config.adv_act_dim)
+            pr_action_preds = (pr_action_preds > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.pr_act_dim)
+            adv_action_preds = (adv_action_preds > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.adv_act_dim)
 
             if not return_dict:
                 return (pr_action_preds, adv_action_preds)

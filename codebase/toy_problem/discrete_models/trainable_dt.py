@@ -21,6 +21,7 @@ class TrainableDT(DecisionTransformerModel):
             new_kwargs["actions"] = new_kwargs.pop("pr_actions")
             new_kwargs.pop("adv_actions")
         
+        batch_size, seq_length = new_kwargs["states"].shape[0], new_kwargs["states"].shape[1]
         output = self.sigmoid(super().forward(**new_kwargs)[1])
         if is_train:
             action_preds = output.reshape(-1, self.config.act_dim)
@@ -29,7 +30,7 @@ class TrainableDT(DecisionTransformerModel):
             return {"loss": loss}
         else:
             # simply return predictions
-            action_preds = (output > 0.5).astype(np.int32).reshape(-1, self.config.act_dim)
+            action_preds = (output > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.act_dim)
             if not kwargs.get("return_dict", False):
                 return (action_preds)
             return DecisionTransformerOutput(action_preds=action_preds)
@@ -43,7 +44,7 @@ class TrainableDT(DecisionTransformerModel):
         returns_to_go = returns_to_go.reshape(batch_size, -1, 1)
         timesteps = timesteps.reshape(batch_size, -1)
 
-        _, action_preds, _ = self.forward(
+        action_preds = self.forward(
             is_train=False,
             states=states,
             actions=actions,
@@ -54,4 +55,4 @@ class TrainableDT(DecisionTransformerModel):
             return_dict=False,
         )
 
-        return action_preds[:, -1], action_preds[:, -1] * 0.0
+        return action_preds[:, -1], torch.ones_like(action_preds[:, -1]) * -1.0
