@@ -5,16 +5,16 @@ environment_config:
   returns_scale: 1000  # scale returns, 1000 to match original DT implementation
 
 dataset_config:
-  is_local: [true]  # true, false, whether it is stored locally or up on HF
-  online_policy_names: ["dataset_combo"]  # d4rl, rarl, arrl_nrdmp, arrl_prmdp, dataset_combo, randagent, etc.
-  dataset_types: ["train"]  # train, test, expert
-  dataset_versions: ["v1"]  # fill only if there is any type of versioning to the dataset being considered, otherwise leave blank
+  is_local: [true]  # true, false, whether it is stored locally or up on HF - a list
+  online_policy_names: ["dataset_combo"]  # d4rl, rarl, arrl_nrdmp, arrl_prmdp, dataset_combo, etc. - a list
+  dataset_types: ["train"]  # train, test, expert - a list
+  dataset_versions: ["v2"]  # fill only if there is any type of versioning to the dataset being considered, otherwise insert empty strings - a list
 
 model_config:
   agent_type: "ardt-full"  # dt, ardt-simplest, ardt-vanilla, ardt-full
-  context_size: [20]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
-  lambda1: [0.1, 1.0, 10.0]  # these are for different parameter combinations to try!!
-  lambda2: [50, 500, 1000]  # these are for different parameter combinations to try!!
+  context_size: [20, 40]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
+  lambda1: [0.0, 1.0]  # these are for different parameter combinations to try!!
+  lambda2: [150, 200]  # these are for different parameter combinations to try!!
 
 training_config:
   train_steps: 4  # 6 => 10**6
@@ -34,8 +34,8 @@ evaluation_config:
   adv_model_types: []  # dt, ardt-simplest, ardt-vanilla, ardt-full
 
 admin_config:
-  wandb_project: "ARDT-Internal"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
-  hf_project: "ARDT-Internal"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
+  wandb_project: "Experiment-1"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
+  hf_project: "Experiment-1"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
   run_type: "pipeline"  # "core", "pipeline", or "test"
   is_verbose: false  # whether to print anything at all
   print_tracebacks: false  # whether to print tracebacks of errors

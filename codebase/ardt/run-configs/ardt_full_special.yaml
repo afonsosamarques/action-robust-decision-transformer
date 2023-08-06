@@ -12,9 +12,9 @@ dataset_config:
 
 model_config:
   agent_type: "ardt-full"  # dt, ardt-simplest, ardt-vanilla, ardt-full
-  context_size: [20]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
-  lambda1: [5.0]  # these are for different parameter combinations to try!!
-  lambda2: [500]  # these are for different parameter combinations to try!!
+  context_size: [20, 40]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
+  lambda1: [0.0, 1.0]  # these are for different parameter combinations to try!!
+  lambda2: [150, 200]  # these are for different parameter combinations to try!!
 
 training_config:
   train_steps: 4  # 6 => 10**6
@@ -34,8 +34,8 @@ evaluation_config:
   adv_model_types: []  # dt, ardt-simplest, ardt-vanilla, ardt-full
 
 admin_config:
-  wandb_project: "Experiment-2"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
-  hf_project: "Experiment-2"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
+  wandb_project: "Experiment-1"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
+  hf_project: "Experiment-1"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
   run_type: "pipeline"  # "core", "pipeline", or "test"
   is_verbose: false  # whether to print anything at all
   print_tracebacks: false  # whether to print tracebacks of errors

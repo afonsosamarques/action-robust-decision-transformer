@@ -247,6 +247,14 @@ class StochasticDT(DecisionTransformerModel):
         pr_action_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # predict next action given return, state, adv
 
         if is_train:
+            # HACK HACK HACK
+            if self.config.lambda1 == 0:
+                pass
+            elif self.config.lambda1 > 0.1:
+                self.config.lambda1 = self.config.lambda1 - 0.9/4000
+            else:
+                self.config.lambda1 = max(0, self.config.lambda1 - 0.1/4000)
+            
             # return loss
             pr_action_log_prob = pr_action_dist.log_prob(pr_actions).sum(axis=2)[attention_mask > 0].mean()
             pr_action_entropy = -pr_action_dist.log_prob(pr_action_dist.rsample((batch_size,))).mean(axis=0).sum(axis=2).mean()
@@ -325,15 +333,12 @@ class TwoAgentRobustDT(DecisionTransformerModel):
 
             sdt_out = None
             if self.step > self.config.warmup_steps:
-                adv_actions_hal = adv_actions_filtered.clone()
-                adv_actions_hal[:, -1, :] = adt_out['adv_action_preds'][:, -1, :]
-
                 sdt_out = self.sdt.forward(
                     is_train=is_train,
                     states=states,
                     pr_actions=pr_actions,
                     pr_actions_filtered=pr_actions_filtered,
-                    adv_actions=adv_actions_hal,
+                    adv_actions=adt_out['adv_action_preds'],
                     rewards=rewards,
                     returns_to_go=returns_to_go,
                     timesteps=timesteps,
