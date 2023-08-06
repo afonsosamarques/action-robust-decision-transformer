@@ -38,9 +38,6 @@ class SingleAgentRobustDT(DecisionTransformerModel):
         )
 
         self.post_init()
-        self.predict_mu.apply(initialise_weights)
-        self.predict_sigma.apply(initialise_weights)
-        self.predict_adv_action.apply(initialise_weights)
 
     def forward(
         self,

@@ -33,15 +33,15 @@ class SimpleRobustDT(DecisionTransformerModel):
         )
 
         self.post_init()
-        self.predict_pr_action.apply(initialise_weights)
-        self.predict_adv_action.apply(initialise_weights)
 
     def forward(
         self,
         is_train=True,
         states=None,
         pr_actions=None,
+        pr_actions_filtered=None,
         adv_actions=None,
+        adv_actions_filtered=None,
         rewards=None,
         returns_to_go=None,
         returns_to_go_scaled=None,
@@ -66,8 +66,8 @@ class SimpleRobustDT(DecisionTransformerModel):
 
         # embed each modality with a different head
         state_embeddings = self.embed_state(states)
-        pr_action_embeddings = self.embed_pr_action(pr_actions)
-        adv_action_embeddings = self.embed_adv_action(adv_actions)
+        pr_action_embeddings = self.embed_pr_action(pr_actions_filtered)
+        adv_action_embeddings = self.embed_adv_action(adv_actions_filtered)
         returns_embeddings = self.embed_return(returns_to_go)
         time_embeddings = self.embed_timestep(timesteps)
 
@@ -189,7 +189,9 @@ class SimpleRobustDT(DecisionTransformerModel):
             is_train=False,
             states=states,
             pr_actions=pr_actions,
+            pr_actions_filtered=pr_actions,
             adv_actions=adv_actions,
+            adv_actions_filtered=adv_actions,
             rewards=rewards,
             returns_to_go=returns_to_go,
             timesteps=timesteps,
