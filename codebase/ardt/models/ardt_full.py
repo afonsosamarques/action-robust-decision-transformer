@@ -249,7 +249,7 @@ class StochasticDT(DecisionTransformerModel):
         if is_train:
             # return loss
             pr_action_log_prob = pr_action_dist.log_prob(pr_actions).sum(axis=2)[attention_mask > 0].mean()
-            pr_action_entropy = -self.log_prob(pr_action_dist.rsample((batch_size,))).mean(axis=0).sum(axis=2)
+            pr_action_entropy = -pr_action_dist.log_prob(pr_action_dist.rsample((batch_size,))).mean(axis=0).sum(axis=2).mean()
             pr_action_loss = -(pr_action_log_prob + self.config.lambda1 * pr_action_entropy)
 
             return {"loss": pr_action_loss,
