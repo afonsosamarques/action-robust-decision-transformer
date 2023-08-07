@@ -5,7 +5,7 @@ from collections import defaultdict
 from datasets import Dataset
 
 
-class OneStepEnv(gym.Env):
+class OneStepEnvVOne(gym.Env):
     def __init__(self):
         super().__init__()
 
@@ -22,9 +22,13 @@ class OneStepEnv(gym.Env):
     def reset(self, seed=0):
         super().reset(seed=seed)
         return np.array([0]), {}
+    
+    @classmethod
+    def get_eval_targets(cls):
+        return [0.5, 2.0, 1.5]
 
 
-def create_onestep_toy_dataset(n_trajs=1000):
+def create_onestep_vone_toy_dataset(n_trajs=1000):
     traj_per_type = n_trajs // 4
     traj_one = [[[0], 0, False, [0], [0]], [[1], 0.5, True, [0], [0]]]
     traj_two = [[[0], 0, False, [0], [1]], [[2], 2, True, [0], [1]]]

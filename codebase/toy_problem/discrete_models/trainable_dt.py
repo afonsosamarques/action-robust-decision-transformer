@@ -20,6 +20,8 @@ class TrainableDT(DecisionTransformerModel):
             # change to be able to utilise the default code
             new_kwargs["actions"] = new_kwargs.pop("pr_actions")
             new_kwargs.pop("adv_actions")
+            new_kwargs.pop("pr_actions_filtered")
+            new_kwargs.pop("adv_actions_filtered")
         
         batch_size, seq_length = new_kwargs["states"].shape[0], new_kwargs["states"].shape[1]
         output = self.sigmoid(super().forward(**new_kwargs)[1])

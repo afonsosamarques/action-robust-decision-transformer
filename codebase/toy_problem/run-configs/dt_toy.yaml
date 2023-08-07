@@ -5,11 +5,10 @@ environment_config:
   returns_scale: 1  # scale returns, 1000 to match original DT implementation
 
 dataset_config:
-  # can ignore all these fields
   is_local: [true]  
-  online_policy_names: ["toy_data"]  
-  dataset_types: ["preset"]  
-  dataset_versions: [""]
+  online_policy_names: ["toy_dataset"]  
+  dataset_types: [""]  
+  dataset_versions: ["v2"]  # here we add the versioning! v1, v2, etc. Very Important!!!
 
 model_config:
   agent_type: "dt"  # dt, ardt-simplest, ardt-vanilla, ardt-full
@@ -18,7 +17,7 @@ model_config:
   lambda2: []  # these are for different parameter combinations to try!!
 
 training_config:
-  train_steps: 3  # 6 => 10**6
+  train_steps: 4  # 6 => 10**6
   train_batch_size: 64  # 32/64
   learning_rate: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   weight_decay: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4

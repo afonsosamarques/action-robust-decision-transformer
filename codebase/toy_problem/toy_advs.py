@@ -26,11 +26,11 @@ class ZeroAgent:
         return ZeroAgentWrapper(self)
 
     def get_action(self, *args, **kwargs):
-        return np.zeros((1, self.action_space)), np.zeros((1, self.action_space))
+        return np.zeros((1, self.action_space)), np.zeros((1, 1))
     
     def get_batch_actions(self, states, *args, **kwargs):
         batch_size = states.shape[0]
-        return np.zeros((batch_size, self.action_space)), np.zeros((batch_size, self.action_space))
+        return np.zeros((batch_size, self.action_space)), np.zeros((batch_size, 1))
     
     def to(self, device):
         pass
@@ -57,14 +57,14 @@ class UniformAgent:
     def eval(self, *args, **kwargs):
         return UniformAgentWrapper(self)
 
-    def get_action(self, *args, **kwargs):
-        return np.random.choice(2).reshape(1, self.action_space), np.random.choice(2).reshape(1, self.action_space)
+    def get_action(self, pr_action, *args, **kwargs):
+        return pr_action, np.random.choice(2).reshape(1, self.action_space), np.random.choice(2).reshape(1, 1)
     
     def get_batch_actions(self, states, pr_actions, *args, **kwargs):
         batch_size = states.shape[0]
         random_mask = np.random.choice([True, False], batch_size)
         random_mask = random_mask[:, np.newaxis]
-        adv_actions = np.where(random_mask, np.array([0]), np.array([1])).reshape(batch_size, self.action_space)
+        adv_actions = np.where(random_mask, np.array([0]), np.array([1])).reshape(batch_size, 1)
         return pr_actions, adv_actions
     
     def to(self, device):
@@ -86,27 +86,40 @@ class WorstCaseAgentWrapper(EvalWrapper):
 
 
 class WorstCaseAgent:
-    def __init__(self, action_space):
+    def __init__(self, action_space, version):
         self.action_space = action_space
+        self.version = version
 
     def eval(self, *args, **kwargs):
         return WorstCaseAgentWrapper(self)
 
     def get_action(self, pr_action, *args, **kwargs):
-        if np.all(pr_action == np.array([0])):
-            return np.array([0])
-        elif np.all(pr_action == np.array([1])):
-            return np.array([1])
-        else:
-            raise ValueError(f"Invalid pr_action: {pr_action}")
+        if self.version == "v1":
+            if np.all(pr_action == np.array([0])):
+                return np.array([0])
+            elif np.all(pr_action == np.array([1])):
+                return np.array([1])
+            else:
+                raise ValueError(f"Invalid pr_action: {pr_action}")
+        elif self.version == "v2":
+            if np.all(pr_action == np.array([0, 0])):
+                return np.array([1])
+            elif np.all(pr_action == np.array([0, 1])):
+                return np.array([0])
+            elif np.all(pr_action == np.array([1, 0])):
+                return np.array(np.random.choice([0, 1]))
+            elif np.all(pr_action == np.array([1, 1])):
+                return np.array(np.random.choice([0, 1]))
+            else:
+                raise ValueError(f"Invalid pr_action: {pr_action}")
     
     def get_batch_actions(self, states, pr_actions, *args, **kwargs):
         batch_size = states.shape[0]
-        adv_actions = np.zeros_like(pr_actions)
+        adv_actions = np.zeros((batch_size, 1))
         for i, pr_action in enumerate(pr_actions):
             pr_action = pr_action.reshape(1, self.action_space)
             adv_actions[i] = self.get_action(pr_action)
-        return pr_actions.reshape(batch_size, self.action_space), adv_actions.reshape(batch_size, self.action_space)
+        return pr_actions.reshape(batch_size, self.action_space), adv_actions.reshape(batch_size, 1)
 
     def to(self, device):
         pass

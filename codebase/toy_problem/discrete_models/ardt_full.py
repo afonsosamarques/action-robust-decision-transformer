@@ -108,19 +108,19 @@ class AdversarialDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given return, state and pr_actions (latest pr action is zero-ed out)
+        mu_preds = self.predict_mu(x[:, 1])
+        sigma_preds = self.predict_sigma(x[:, 1])  
+        rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # learn current return given history, return and state
 
-        mu_preds = self.predict_mu(x[:, 3])
-        sigma_preds = self.predict_sigma(x[:, 3])  
-        rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # learn current return given everything (both latest pr and adv actions are zero-ed out)
+        adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given return, state and pr_actions (latest pr action is zero-ed out)
 
         if is_train:
             # return loss
+            rtg_log_prob = rtg_dist.log_prob(returns_to_go)[attention_mask > 0].mean()
+
             adv_action_preds_mask = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_targets_mask = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_loss = self.config.lambda2 * torch.nn.functional.binary_cross_entropy(adv_action_preds_mask, adv_action_targets_mask)
-
-            rtg_log_prob = rtg_dist.log_prob(returns_to_go)[attention_mask > 0].mean()
 
             return {"loss": -rtg_log_prob + self.config.lambda2 * adv_action_loss,
                     "rtg_log_prob": rtg_log_prob, 
@@ -215,7 +215,7 @@ class StochasticDT(DecisionTransformerModel):
         # this makes the sequence look like (R'_1, s_1, a_1, R'_2, s_2, a_2, ...)
         # which works nice in an autoregressive sense since states predict actions
         stacked_inputs = (
-            torch.stack((returns_embeddings, state_embeddings, adv_action_embeddings, pr_action_embeddings), dim=1)
+            torch.stack((returns_embeddings, state_embeddings, pr_action_embeddings, adv_action_embeddings), dim=1)
             .permute(0, 2, 1, 3)
             .reshape(batch_size, 4 * seq_length, self.hidden_size)
         )

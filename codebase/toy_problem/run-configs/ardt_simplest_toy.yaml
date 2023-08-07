@@ -5,11 +5,10 @@ environment_config:
   returns_scale: 1  # scale returns, 1000 to match original DT implementation
 
 dataset_config:
-  # can ignore all these fields
   is_local: [true]  
-  online_policy_names: ["toy_data"]  
-  dataset_types: ["preset"]  
-  dataset_versions: [""]
+  online_policy_names: ["toy_dataset"]  
+  dataset_types: [""]  
+  dataset_versions: ["v2"]  # here we add the versioning! v1, v2, etc. Very Important!!!
 
 model_config:
   agent_type: "ardt-simplest"  # dt, ardt-simplest, ardt-vanilla, ardt-full
