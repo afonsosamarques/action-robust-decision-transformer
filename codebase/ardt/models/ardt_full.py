@@ -107,14 +107,9 @@ class AdversarialDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        if self.config.flag:
-            mu_preds = self.predict_mu(x[:, 1])
-            sigma_preds = self.predict_sigma(x[:, 1])  
-            rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # learn current return given everything but only in the past
-        else:
-            mu_preds = self.predict_mu(x[:, 3])
-            sigma_preds = self.predict_sigma(x[:, 3])  
-            rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # learn current return given everything
+        mu_preds = self.predict_mu(x[:, 1])
+        sigma_preds = self.predict_sigma(x[:, 1])  
+        rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)
 
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given return, state and pr_actions (latest pr action is zero-ed out)
 
@@ -137,10 +132,10 @@ class AdversarialDT(DecisionTransformerModel):
         else:
             # return predictions
             if not return_dict:
-                return (rtg_dist.icdf(torch.tensor([0.025])), adv_action_preds)
+                return (rtg_dist.icdf(torch.tensor([0.025], device=stacked_inputs.device)), adv_action_preds)
 
             return DecisionTransformerOutput(
-                rtg_preds=rtg_dist.icdf(torch.tensor([0.025])),
+                rtg_preds=rtg_dist.icdf(torch.tensor([0.025], device=stacked_inputs.device)),
                 adv_action_preds=adv_action_preds,
                 # hidden_states=encoder_outputs.hidden_states,
                 # last_hidden_state=encoder_outputs.last_hidden_state,
