@@ -132,10 +132,10 @@ class AdversarialDT(DecisionTransformerModel):
         else:
             # return predictions
             if not return_dict:
-                return (rtg_dist.icdf(torch.tensor([0.025], device=stacked_inputs.device)), adv_action_preds)
+                return (rtg_dist.icdf(torch.tensor([0.5], device=stacked_inputs.device)), adv_action_preds)
 
             return DecisionTransformerOutput(
-                rtg_preds=rtg_dist.icdf(torch.tensor([0.025], device=stacked_inputs.device)),
+                rtg_preds=rtg_dist.icdf(torch.tensor([0.5], device=stacked_inputs.device)),
                 adv_action_preds=adv_action_preds,
                 # hidden_states=encoder_outputs.hidden_states,
                 # last_hidden_state=encoder_outputs.last_hidden_state,
@@ -246,14 +246,6 @@ class StochasticDT(DecisionTransformerModel):
         pr_action_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # predict next action given return, state, adv
 
         if is_train:
-            # HACK HACK HACK
-            if self.config.lambda1 == 0:
-                pass
-            elif self.config.lambda1 > 0.1:
-                self.config.lambda1 = self.config.lambda1 - 0.9/4000
-            else:
-                self.config.lambda1 = max(0, self.config.lambda1 - 0.1/4000)
-            
             # return loss
             pr_action_log_prob = pr_action_dist.log_prob(pr_actions).sum(axis=2)[attention_mask > 0].mean()
             pr_action_entropy = -pr_action_dist.log_prob(pr_action_dist.rsample((batch_size,))).mean(axis=0).sum(axis=2).mean()
@@ -286,6 +278,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
         self.adt = AdversarialDT(config)
         self.sdt = StochasticDT(config)
         self.step = 1
+        self.start_lambda1 = config.lambda1
 
     def forward(
         self,
@@ -306,6 +299,20 @@ class TwoAgentRobustDT(DecisionTransformerModel):
         #
         # easier if we simply separate between training and testing straight away
         if is_train:
+            # decay lambda1
+            if self.step > self.config.warmup_steps:
+                mid_ep_step = self.config.max_ep_len // 2
+                lambda1_mid_target = self.start_lambda1 // 10
+                if self.config.lambda1 <= 0:
+                    self.config.lambda1 = 0
+                elif self.config.lambda1 > lambda1_mid_target:
+                    self.config.lambda1 = self.config.lambda1 - ((self.start_lambda1 - lambda1_mid_target) / (mid_ep_step - self.config.warmup_steps))
+                else:
+                    self.config.lambda1 = self.config.lambda1 - (lambda1_mid_target / mid_ep_step)
+            # just to make sure
+            self.adt.config.lambda1 = self.config.lambda1
+            self.sdt.config.lambda1 = self.config.lambda1
+
             # initially we train only the ADT, which will work as a sort of "teacher" for the SDT
             # but then we train the SDT for a few iterations to make sure it can learn from the ADT
             self.step += 1

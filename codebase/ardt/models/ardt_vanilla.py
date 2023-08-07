@@ -5,7 +5,6 @@ from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
 from .ardt_utils import DecisionTransformerOutput, ADTEvalWrapper
 from .ardt_utils import StdSquashFunc, ExpFunc
-from .ardt_utils import initialise_weights
 
 
 # FIXME: not currently being updated, do not use!!!

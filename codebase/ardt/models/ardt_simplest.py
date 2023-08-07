@@ -4,7 +4,6 @@ import torch
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
 from .ardt_utils import DecisionTransformerOutput, ADTEvalWrapper
-from .ardt_utils import initialise_weights
 
 
 class SimpleRobustDT(DecisionTransformerModel):
