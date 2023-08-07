@@ -79,6 +79,7 @@ def train(
         min_obs_return=collator.min_ep_return,
         warmup_steps=train_params['warmup_steps'],  # exception: this is used in training but due to HF API it must be in config as well
         log_interval_steps=100,
+        flag=(env_params['max_ep_return'] == 6000)
     )
 
     # here we define the training protocol

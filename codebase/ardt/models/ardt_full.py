@@ -5,7 +5,6 @@ from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
 from .ardt_utils import DecisionTransformerOutput, ADTEvalWrapper
 from .ardt_utils import StdReturnSquashFunc, StdSquashFunc, ExpFunc
-from .ardt_utils import initialise_weights
 
 
 class AdversarialDT(DecisionTransformerModel):
@@ -108,19 +107,24 @@ class AdversarialDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given return, state and pr_actions (latest pr action is zero-ed out)
+        if self.config.flag:
+            mu_preds = self.predict_mu(x[:, 1])
+            sigma_preds = self.predict_sigma(x[:, 1])  
+            rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # learn current return given everything but only in the past
+        else:
+            mu_preds = self.predict_mu(x[:, 3])
+            sigma_preds = self.predict_sigma(x[:, 3])  
+            rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # learn current return given everything
 
-        mu_preds = self.predict_mu(x[:, 3])
-        sigma_preds = self.predict_sigma(x[:, 3])  
-        rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # learn current return given everything (both latest pr and adv actions are zero-ed out)
+        adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given return, state and pr_actions (latest pr action is zero-ed out)
 
         if is_train:
             # return loss
+            rtg_log_prob = rtg_dist.log_prob(returns_to_go)[attention_mask > 0].mean()
+
             adv_action_preds_mask = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_targets_mask = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_loss = torch.mean((adv_action_preds_mask - adv_action_targets_mask) ** 2)
-
-            rtg_log_prob = rtg_dist.log_prob(returns_to_go)[attention_mask > 0].mean()
                 
             return {"loss": -rtg_log_prob + self.config.lambda2 * adv_action_loss,
                     "rtg_log_prob": rtg_log_prob, 
@@ -133,10 +137,10 @@ class AdversarialDT(DecisionTransformerModel):
         else:
             # return predictions
             if not return_dict:
-                return (rtg_dist.icdf(torch.tensor([0.025], device=stacked_inputs.device)), adv_action_preds)
+                return (rtg_dist.icdf(torch.tensor([0.025])), adv_action_preds)
 
             return DecisionTransformerOutput(
-                rtg_preds=rtg_dist.icdf(torch.tensor([0.025], device=stacked_inputs.device)),
+                rtg_preds=rtg_dist.icdf(torch.tensor([0.025])),
                 adv_action_preds=adv_action_preds,
                 # hidden_states=encoder_outputs.hidden_states,
                 # last_hidden_state=encoder_outputs.last_hidden_state,
@@ -213,7 +217,7 @@ class StochasticDT(DecisionTransformerModel):
         # this makes the sequence look like (R'_1, s_1, a_1, R'_2, s_2, a_2, ...)
         # which works nice in an autoregressive sense since states predict actions
         stacked_inputs = (
-            torch.stack((returns_embeddings, state_embeddings, adv_action_embeddings, pr_action_embeddings), dim=1)
+            torch.stack((returns_embeddings, state_embeddings, pr_action_embeddings, adv_action_embeddings), dim=1)
             .permute(0, 2, 1, 3)
             .reshape(batch_size, 4 * seq_length, self.hidden_size)
         )
@@ -242,8 +246,8 @@ class StochasticDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions 
-        mu_preds = self.predict_mu(x[:, 2])
-        sigma_preds = self.predict_sigma(x[:, 2])
+        mu_preds = self.predict_mu(x[:, 1])
+        sigma_preds = self.predict_sigma(x[:, 1])
         pr_action_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # predict next action given return, state, adv
 
         if is_train:
@@ -287,7 +291,6 @@ class TwoAgentRobustDT(DecisionTransformerModel):
         self.adt = AdversarialDT(config)
         self.sdt = StochasticDT(config)
         self.step = 1
-        self.post_init()
 
     def forward(
         self,
@@ -333,12 +336,15 @@ class TwoAgentRobustDT(DecisionTransformerModel):
 
             sdt_out = None
             if self.step > self.config.warmup_steps:
+                adv_actions_hal = adv_actions_filtered.clone()
+                adv_actions_hal[:, -1, :] = adt_out['adv_action_preds'][:, -1, :]
+
                 sdt_out = self.sdt.forward(
                     is_train=is_train,
                     states=states,
                     pr_actions=pr_actions,
                     pr_actions_filtered=pr_actions_filtered,
-                    adv_actions=adt_out['adv_action_preds'],
+                    adv_actions=adv_actions_hal,
                     rewards=rewards,
                     returns_to_go=returns_to_go,
                     timesteps=timesteps,
