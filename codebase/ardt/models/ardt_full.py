@@ -133,10 +133,10 @@ class AdversarialDT(DecisionTransformerModel):
         else:
             # return predictions
             if not return_dict:
-                return (rtg_dist.icdf(torch.tensor([0.025])), adv_action_preds)
+                return (rtg_dist.icdf(torch.tensor([0.025], device=stacked_inputs.device)), adv_action_preds)
 
             return DecisionTransformerOutput(
-                rtg_preds=rtg_dist.icdf(torch.tensor([0.025])),
+                rtg_preds=rtg_dist.icdf(torch.tensor([0.025], device=stacked_inputs.device)),
                 adv_action_preds=adv_action_preds,
                 # hidden_states=encoder_outputs.hidden_states,
                 # last_hidden_state=encoder_outputs.last_hidden_state,

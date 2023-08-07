@@ -18,6 +18,8 @@ class TrainableDT(DecisionTransformerModel):
             # change to be able to utilise the default code
             new_kwargs["actions"] = new_kwargs.pop("pr_actions")
             new_kwargs.pop("adv_actions")
+            new_kwargs.pop("pr_actions_filtered")
+            new_kwargs.pop("adv_actions_filtered")
         
         if is_train:
             # add the DT loss; applied only to non-padding values in action head
