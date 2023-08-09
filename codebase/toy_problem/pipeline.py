@@ -156,7 +156,7 @@ def train(
         skip_memory_metrics=True,
         run_name=model_name,
         hub_model_id=hub_model_id,
-        push_to_hub=True,
+        push_to_hub=False,
     )
 
     # set up and start training
@@ -198,6 +198,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_name', type=str, required=True, help='Name of yaml configuration file to use.')
     parser.add_argument('--is_test_run', action='store_true', help='Whether this is a test run. Set if it is, ignore if it is not.')
+    parser.add_argument('--is_stochastic', action='store_true', help='Whether to run the stochastic version of the architecture. Set if it is, ignore if it is not.' )
     args = parser.parse_args()
 
     with open(f'{find_root_dir()}/run-configs/{args.config_name}.yaml', 'r') as f:
@@ -244,262 +245,263 @@ if __name__ == "__main__":
     params_combinations = list(itertools.product(*params))
 
     # build, train and evaluate models
-    for is_stochastic in [False, True]:
-        dataset_names = config.dataset_config.online_policy_names
-        dataset_versions = config.dataset_config.dataset_versions
+    is_stochastic = args.is_stochastic
 
-        everything_store = {}
+    dataset_names = config.dataset_config.online_policy_names
+    dataset_versions = config.dataset_config.dataset_versions
 
-        for dataset_name, dataset_version in zip(dataset_names, dataset_versions):
-            dataset_id = dataset_name + "-" + dataset_version
-            if dataset_version == "v1":
-                dataset = create_onestep_vone_toy_dataset(n_trajs=train_batch_size*train_steps)  # stick the dataset in memory at once to speeds things up
-            elif dataset_version == "v2":
-                dataset = create_onestep_vtwo_toy_dataset(n_trajs=train_batch_size*train_steps)  # stick the dataset in memory at once to speeds things up
-            elif dataset_version == "v3":
-                dataset = create_onestep_vthree_toy_dataset(n_trajs=train_batch_size*train_steps)  # stick the dataset in memory at once to speeds things up
-            models = []
+    everything_store = {}
 
-            for params_combination in params_combinations:
-                adv_to_results = defaultdict(list)
+    for dataset_name, dataset_version in zip(dataset_names, dataset_versions):
+        dataset_id = dataset_name + "-" + dataset_version
+        if dataset_version == "v1":
+            dataset = create_onestep_vone_toy_dataset(n_trajs=train_batch_size*train_steps)  # stick the dataset in memory at once to speeds things up
+        elif dataset_version == "v2":
+            dataset = create_onestep_vtwo_toy_dataset(n_trajs=train_batch_size*train_steps)  # stick the dataset in memory at once to speeds things up
+        elif dataset_version == "v3":
+            dataset = create_onestep_vthree_toy_dataset(n_trajs=train_batch_size*train_steps)  # stick the dataset in memory at once to speeds things up
+        models = []
 
-                for itr in range(N_MODELS):
-                    model_params = {
-                        'context_size': params_combination[0],
-                        'lambda1': params_combination[1],
-                        'lambda2': params_combination[2],
-                    }
-                    train_params = {
-                        'train_steps': train_steps if not args.is_test_run else 10,
-                        'train_batch_size': train_batch_size,
-                        'learning_rate': params_combination[3],
-                        'weight_decay': params_combination[4],
-                        'max_grad_norm': params_combination[5],
-                        'warmup_steps': params_combination[6],
-                    }
+        for params_combination in params_combinations:
+            adv_to_results = defaultdict(list)
 
-                    # set up model
-                    agent_type = model_config.agent_type
-                    env_type = env_config.env_type
-                    chosen_agent = load_agent(agent_type)
-                    model_name = build_model_name(agent_type, dataset_id)
+            for itr in range(N_MODELS):
+                model_params = {
+                    'context_size': params_combination[0],
+                    'lambda1': params_combination[1],
+                    'lambda2': params_combination[2],
+                }
+                train_params = {
+                    'train_steps': train_steps if not args.is_test_run else 10,
+                    'train_batch_size': train_batch_size,
+                    'learning_rate': params_combination[3],
+                    'weight_decay': params_combination[4],
+                    'max_grad_norm': params_combination[5],
+                    'warmup_steps': params_combination[6],
+                }
+
+                # set up model
+                agent_type = model_config.agent_type
+                env_type = env_config.env_type
+                chosen_agent = load_agent(agent_type)
+                model_name = build_model_name(agent_type, dataset_id)
+                
+                # train and recover path
+                model_path_local = train(
+                    model_name=model_name,
+                    chosen_agent=chosen_agent,
+                    dataset_name=dataset_id,
+                    dataset=dataset,
+                    env_params=env_params,
+                    model_params=model_params,
+                    train_params=train_params,
+                    wandb_project=admin_config.wandb_project,
+                    hf_project=admin_config.hf_project,
+                    is_offline_log=is_offline_log,
+                    run_suffix=run_suffix,
+                    device=device,
+                    is_stochastic=is_stochastic,
+                )
+
+                models.append([model_name, agent_type, model_path_local])
+
+                # evaluate if desired
+                env_name = f'toy-env-{dataset_version}'
+
+                for adv_model_name, adv_model_type in zip(eval_config.adv_model_names, eval_config.adv_model_types):
+                    # load models
+                    try:
+                        pr_model, is_adv_pr_model = load_model(agent_type, model_name, model_path=(model_path_local if model_path_local is not None else admin_config.hf_project + f"/{model_name}"))
+                    except HTTPError as e:
+                        print(f"Could not load protagonist model {model_name} from repo.")
+                        raise e
+                    pr_model = pr_model.eval(mdp_type=None)
+
+                    adv_model = None
+                    if adv_model_type == 'uniform':
+                        adv_model = UniformAgent(pr_action_space=pr_model.model.config.pr_act_dim, adv_action_space=pr_model.model.config.adv_act_dim)
+                        adv_model = adv_model.eval()
+                    elif adv_model_type == 'worstcase':
+                        adv_model = WorstCaseAgent(pr_action_space=pr_model.model.config.pr_act_dim, adv_action_space=pr_model.model.config.adv_act_dim, version=dataset_version)
+                        adv_model = adv_model.eval()
+                    elif adv_model_type == 'zero':
+                        adv_model = ZeroAgent(pr_action_space=pr_model.model.config.pr_act_dim, adv_action_space=pr_model.model.config.adv_act_dim)
+                        adv_model = adv_model.eval()
+                    else:
+                        raise Exception(f"Adversary model {adv_model_type} not available.")
+
+                    eval_targets = OneStepEnvVOne.get_eval_targets() if dataset_version == "v1" else (OneStepEnvVTwo.get_eval_targets() if dataset_version == "v2" else OneStepEnvVThree.get_eval_targets())
+                    for eval_target in eval_targets:
+                        print("\n================================================")
+                        print(f"Evaluating protagonist model {model_name} on environment {env_name} against adversarial model {adv_model_name} with target {eval_target}.")
+
+                        # setting up environments for parallel runs
+                        envs = []
+                        start_states = []
+                        for n in range(1000):
+                            env = OneStepEnvVOne() if dataset_version == "v1" else (OneStepEnvVTwo() if dataset_version == "v2" else OneStepEnvVThree())
+                            state, _ = env.reset()
+                            envs.append(env)
+                            start_states.append(state)
+                        start_states = np.array(start_states)
+
+                        # evaluation loop
+                        episode_returns = np.zeros(1000)
+                        data_dict = defaultdict(list)
+                        for i in range(1000):
+                            data_dict['observations'].append([])
+                            data_dict['pr_actions'].append([])
+                            data_dict['est_adv_actions'].append([])
+                            data_dict['adv_actions'].append([])
+                            data_dict['rewards'].append([])
+                            data_dict['dones'].append([])
+
+                        with torch.no_grad():
+                            pr_model.new_batch_eval(start_states=start_states, eval_target=eval_target)
+                            adv_model.new_batch_eval(start_states=start_states, eval_target=eval_target)
+                            
+                            # run episode
+                            pr_actions, est_adv_actions = pr_model.get_batch_actions(states=start_states)
+                            _, adv_actions = adv_model.get_batch_actions(states=start_states, pr_actions=pr_actions)
+                            cumul_actions = np.concatenate((pr_actions, adv_actions), axis=1)
+
+                            states = np.zeros_like(start_states)
+                            for i, env in enumerate(envs):
+                                state, reward, done, trunc, _ = env.step(cumul_actions[i])
+                                states[i] = state
+                                episode_returns[i] = reward
+
+                                # log episode data
+                                data_dict['observations'][i].append(start_states[i])
+                                data_dict['pr_actions'][i].append(pr_actions[i])
+                                data_dict['est_adv_actions'][i].append(est_adv_actions[i])
+                                data_dict['adv_actions'][i].append(adv_actions[i])
+                                data_dict['rewards'][i].append(0)
+                                data_dict['dones'][i].append(False)
+                                data_dict['observations'][i].append(state)
+                                data_dict['pr_actions'][i].append(np.ones_like(pr_actions[i]) * -1.0)
+                                data_dict['adv_actions'][i].append(np.ones_like(adv_actions[i]) * -1.0)
+                                data_dict['est_adv_actions'][i].append(np.ones_like(est_adv_actions[i]) * -1.0)
+                                data_dict['rewards'][i].append(reward)
+                                data_dict['dones'][i].append(True)
                     
-                    # train and recover path
-                    model_path_local = train(
-                        model_name=model_name,
-                        chosen_agent=chosen_agent,
-                        dataset_name=dataset_id,
-                        dataset=dataset,
-                        env_params=env_params,
-                        model_params=model_params,
-                        train_params=train_params,
-                        wandb_project=admin_config.wandb_project,
-                        hf_project=admin_config.hf_project,
-                        is_offline_log=is_offline_log,
-                        run_suffix=run_suffix,
-                        device=device,
-                        is_stochastic=is_stochastic,
-                    )
+                        # store some statistics
+                        # count how many times each action was taken
+                        pr_actions = np.array(data_dict['pr_actions'])
+                        pr_actions = pr_actions.reshape(-1, pr_actions.shape[-1])
+                        possible_actions = np.unique(pr_actions, axis=0)
+                        possible_actions = possible_actions[np.all(possible_actions != [-1.0, -1.0], axis=1)]
+                        pr_actions_count = np.array([np.sum(np.all(pr_actions == possible_action, axis=1)) for possible_action in possible_actions])
+                        pr_actions_freq = pr_actions_count / (np.sum(pr_actions_count) + 1e-8)
+                        pr_actions_stats = {}
+                        for i, possible_action in enumerate(possible_actions):
+                            pr_actions_stats[str(possible_action)] = pr_actions_freq[i]
 
-                    models.append([model_name, agent_type, model_path_local])
+                        # count how many times each adversarial action was estimated
+                        est_adv_actions = np.array(data_dict['est_adv_actions'])
+                        est_adv_actions = est_adv_actions.reshape(-1, est_adv_actions.shape[-1])
+                        possible_actions = np.unique(est_adv_actions, axis=0)
+                        possible_actions = possible_actions[np.all(possible_actions != [-1.0], axis=1)]
+                        est_adv_actions_count = np.array([np.sum(np.all(est_adv_actions == possible_action, axis=1)) for possible_action in possible_actions])
+                        est_adv_actions_freq = est_adv_actions_count / (np.sum(est_adv_actions_count) + 1e-8)
+                        est_adv_actions_stats = {}
+                        for i, possible_action in enumerate(possible_actions):
+                            est_adv_actions_stats[str(possible_action)] = est_adv_actions_freq[i]
+                        if len(possible_actions) == 0: est_adv_actions_stats["N/A"] = 1.0
 
-                    # evaluate if desired
-                    env_name = f'toy-env-{dataset_version}'
+                        # count how many times each adversarial action was taken
+                        adv_actions = np.array(data_dict['adv_actions'])
+                        adv_actions = adv_actions.reshape(-1, adv_actions.shape[-1])
+                        possible_actions = np.unique(adv_actions, axis=0)
+                        possible_actions = possible_actions[np.all(possible_actions != [-1.0], axis=1)]
+                        adv_actions_count = np.array([np.sum(np.all(adv_actions == possible_action, axis=1)) for possible_action in possible_actions])
+                        adv_actions_freq = adv_actions_count / (np.sum(adv_actions_count) + 1e-8)
+                        adv_actions_stats = {}
+                        for i, possible_action in enumerate(possible_actions):
+                            adv_actions_stats[str(possible_action)] = adv_actions_freq[i]
 
-                    for adv_model_name, adv_model_type in zip(eval_config.adv_model_names, eval_config.adv_model_types):
-                        # load models
-                        try:
-                            pr_model, is_adv_pr_model = load_model(agent_type, model_name, model_path=(model_path_local if model_path_local is not None else admin_config.hf_project + f"/{model_name}"))
-                        except HTTPError as e:
-                            print(f"Could not load protagonist model {model_name} from repo.")
-                            raise e
-                        pr_model = pr_model.eval(mdp_type=None)
-
-                        adv_model = None
-                        if adv_model_type == 'uniform':
-                            adv_model = UniformAgent(pr_action_space=pr_model.model.config.pr_act_dim, adv_action_space=pr_model.model.config.adv_act_dim)
-                            adv_model = adv_model.eval()
-                        elif adv_model_type == 'worstcase':
-                            adv_model = WorstCaseAgent(pr_action_space=pr_model.model.config.pr_act_dim, adv_action_space=pr_model.model.config.adv_act_dim, version=dataset_version)
-                            adv_model = adv_model.eval()
-                        elif adv_model_type == 'zero':
-                            adv_model = ZeroAgent(pr_action_space=pr_model.model.config.pr_act_dim, adv_action_space=pr_model.model.config.adv_act_dim)
-                            adv_model = adv_model.eval()
-                        else:
-                            raise Exception(f"Adversary model {adv_model_type} not available.")
-
-                        eval_targets = OneStepEnvVOne.get_eval_targets() if dataset_version == "v1" else (OneStepEnvVTwo.get_eval_targets() if dataset_version == "v2" else OneStepEnvVThree.get_eval_targets())
-                        for eval_target in eval_targets:
-                            print("\n================================================")
-                            print(f"Evaluating protagonist model {model_name} on environment {env_name} against adversarial model {adv_model_name} with target {eval_target}.")
-
-                            # setting up environments for parallel runs
-                            envs = []
-                            start_states = []
-                            for n in range(1000):
-                                env = OneStepEnvVOne() if dataset_version == "v1" else (OneStepEnvVTwo() if dataset_version == "v2" else OneStepEnvVThree())
-                                state, _ = env.reset()
-                                envs.append(env)
-                                start_states.append(state)
-                            start_states = np.array(start_states)
-
-                            # evaluation loop
-                            episode_returns = np.zeros(1000)
-                            data_dict = defaultdict(list)
-                            for i in range(1000):
-                                data_dict['observations'].append([])
-                                data_dict['pr_actions'].append([])
-                                data_dict['est_adv_actions'].append([])
-                                data_dict['adv_actions'].append([])
-                                data_dict['rewards'].append([])
-                                data_dict['dones'].append([])
-
-                            with torch.no_grad():
-                                pr_model.new_batch_eval(start_states=start_states, eval_target=eval_target)
-                                adv_model.new_batch_eval(start_states=start_states, eval_target=eval_target)
-                                
-                                # run episode
-                                pr_actions, est_adv_actions = pr_model.get_batch_actions(states=start_states)
-                                _, adv_actions = adv_model.get_batch_actions(states=start_states, pr_actions=pr_actions)
-                                cumul_actions = np.concatenate((pr_actions, adv_actions), axis=1)
-
-                                states = np.zeros_like(start_states)
-                                for i, env in enumerate(envs):
-                                    state, reward, done, trunc, _ = env.step(cumul_actions[i])
-                                    states[i] = state
-                                    episode_returns[i] = reward
-
-                                    # log episode data
-                                    data_dict['observations'][i].append(start_states[i])
-                                    data_dict['pr_actions'][i].append(pr_actions[i])
-                                    data_dict['est_adv_actions'][i].append(est_adv_actions[i])
-                                    data_dict['adv_actions'][i].append(adv_actions[i])
-                                    data_dict['rewards'][i].append(0)
-                                    data_dict['dones'][i].append(False)
-                                    data_dict['observations'][i].append(state)
-                                    data_dict['pr_actions'][i].append(np.ones_like(pr_actions[i]) * -1.0)
-                                    data_dict['adv_actions'][i].append(np.ones_like(adv_actions[i]) * -1.0)
-                                    data_dict['est_adv_actions'][i].append(np.ones_like(est_adv_actions[i]) * -1.0)
-                                    data_dict['rewards'][i].append(reward)
-                                    data_dict['dones'][i].append(True)
-                        
-                            # store some statistics
-                            # count how many times each action was taken
-                            pr_actions = np.array(data_dict['pr_actions'])
-                            pr_actions = pr_actions.reshape(-1, pr_actions.shape[-1])
-                            possible_actions = np.unique(pr_actions, axis=0)
-                            possible_actions = possible_actions[np.all(possible_actions != [-1.0, -1.0], axis=1)]
-                            pr_actions_count = np.array([np.sum(np.all(pr_actions == possible_action, axis=1)) for possible_action in possible_actions])
-                            pr_actions_freq = pr_actions_count / (np.sum(pr_actions_count) + 1e-8)
-                            pr_actions_stats = {}
-                            for i, possible_action in enumerate(possible_actions):
-                                pr_actions_stats[str(possible_action)] = pr_actions_freq[i]
-
-                            # count how many times each adversarial action was estimated
-                            est_adv_actions = np.array(data_dict['est_adv_actions'])
-                            est_adv_actions = est_adv_actions.reshape(-1, est_adv_actions.shape[-1])
-                            possible_actions = np.unique(est_adv_actions, axis=0)
-                            possible_actions = possible_actions[np.all(possible_actions != [-1.0], axis=1)]
-                            est_adv_actions_count = np.array([np.sum(np.all(est_adv_actions == possible_action, axis=1)) for possible_action in possible_actions])
-                            est_adv_actions_freq = est_adv_actions_count / (np.sum(est_adv_actions_count) + 1e-8)
-                            est_adv_actions_stats = {}
-                            for i, possible_action in enumerate(possible_actions):
-                                est_adv_actions_stats[str(possible_action)] = est_adv_actions_freq[i]
-                            if len(possible_actions) == 0: est_adv_actions_stats["N/A"] = 1.0
-
-                            # count how many times each adversarial action was taken
-                            adv_actions = np.array(data_dict['adv_actions'])
-                            adv_actions = adv_actions.reshape(-1, adv_actions.shape[-1])
-                            possible_actions = np.unique(adv_actions, axis=0)
-                            possible_actions = possible_actions[np.all(possible_actions != [-1.0], axis=1)]
-                            adv_actions_count = np.array([np.sum(np.all(adv_actions == possible_action, axis=1)) for possible_action in possible_actions])
-                            adv_actions_freq = adv_actions_count / (np.sum(adv_actions_count) + 1e-8)
-                            adv_actions_stats = {}
-                            for i, possible_action in enumerate(possible_actions):
-                                adv_actions_stats[str(possible_action)] = adv_actions_freq[i]
-
-                            adv_to_results[adv_model_name].append({
-                                "Target Episode Return": eval_target,
-                                "Mean Episode Return": np.mean(episode_returns),
-                                "Std Episode Return": np.std(episode_returns),
-                                "Min Episode Return": np.min(episode_returns),
-                                "Median Episode Return": np.median(episode_returns),
-                                "Max Episode Return": np.max(episode_returns), 
-                                "Pr Action Stats": pr_actions_stats,
-                                "Est Adv Action Stats": est_adv_actions_stats,
-                                "Adv Action Stats": adv_actions_stats,
-                            })
-
-                            # save data_dict as hf dataset
-                            data_ds = Dataset.from_dict(data_dict)
-                            data_ds.save_to_disk(f'{find_root_dir()}/datasets/{model_name}_{adv_model_name}_eval_{env_name}_{eval_target}_{itr}')
-
-                # print out results
-                for adv_model_name, results in adv_to_results.items():
-                    print("================================================")
-                    print(f"For protagonist model {model_name} and adversary model {adv_model_name}. \n")
-
-                    everything_store[f"{adv_model_name}"] = []
-
-                    target_to_results = {}
-                    for result in results:
-                        if result["Target Episode Return"] not in target_to_results:
-                            target_to_results[result["Target Episode Return"]] = defaultdict(list)
-                        target_to_results[result["Target Episode Return"]]["Mean Episode Return"].append(result["Mean Episode Return"])
-                        target_to_results[result["Target Episode Return"]]["Std Episode Return"].append(result["Std Episode Return"])
-                        target_to_results[result["Target Episode Return"]]["Min Episode Return"].append(result["Min Episode Return"])
-                        target_to_results[result["Target Episode Return"]]["Median Episode Return"].append(result["Median Episode Return"])
-                        target_to_results[result["Target Episode Return"]]["Max Episode Return"].append(result["Max Episode Return"])
-                        target_to_results[result["Target Episode Return"]]["Pr Action Stats"].append(result["Pr Action Stats"])
-                        target_to_results[result["Target Episode Return"]]["Est Adv Action Stats"].append(result["Est Adv Action Stats"])
-                        target_to_results[result["Target Episode Return"]]["Adv Action Stats"].append(result["Adv Action Stats"])
-
-                    for target, results in target_to_results.items():
-                        print(f"Target Episode Return: {target}")
-                        print(f"Mean Episode Return: {np.mean(results['Mean Episode Return'])} +- {np.std(results['Mean Episode Return'])}")
-                        print(f"Std Episode Return: {np.mean(results['Std Episode Return'])} +- {np.std(results['Std Episode Return'])}")
-                        print(f"Min Episode Return: {np.mean(results['Min Episode Return'])} +- {np.std(results['Min Episode Return'])}")
-                        print(f"Median Episode Return: {np.mean(results['Median Episode Return'])} +- {np.std(results['Median Episode Return'])}")
-                        print(f"Max Episode Return: {np.mean(results['Max Episode Return'])} +- {np.std(results['Max Episode Return'])}")
-                        # unpack action stats
-                        pr_action_stats_to_freqs = defaultdict(list)
-                        for pr_action_stats in results['Pr Action Stats']:
-                            for pr_action, freq in pr_action_stats.items():
-                                pr_action_stats_to_freqs[pr_action].append(freq)
-                        for pr_action, freqs in pr_action_stats_to_freqs.items():
-                            print(f"Pr Action {pr_action}: {np.mean(freqs)} +- {np.std(freqs)}")
-                        #
-                        est_adv_action_stats_to_freqs = defaultdict(list)
-                        for est_adv_action_stats in results['Est Adv Action Stats']:
-                            for est_adv_action, freq in est_adv_action_stats.items():
-                                est_adv_action_stats_to_freqs[est_adv_action].append(freq)
-                        for est_adv_action, freqs in est_adv_action_stats_to_freqs.items():
-                            print(f"Est Adv Action {est_adv_action}: {np.mean(freqs)} +- {np.std(freqs)}")
-                        #
-                        adv_action_stats_to_freqs = defaultdict(list)
-                        for adv_action_stats in results['Adv Action Stats']:
-                            for adv_action, freq in adv_action_stats.items():
-                                adv_action_stats_to_freqs[adv_action].append(freq)
-                        for adv_action, freqs in adv_action_stats_to_freqs.items():
-                            print(f"Adv Action {adv_action}: {np.mean(freqs)} +- {np.std(freqs)}")
-                        print("================================================")
-
-                        # store results
-                        everything_store[f"{adv_model_name}"].append({
-                            "target_return": target,
-                            "mean_returns": list(results['Mean Episode Return']),
-                            "std_returns": list(results['Std Episode Return']),
-                            "pr_action_freqs": pr_action_stats_to_freqs,
-                            "est_adv_action_freqs": est_adv_action_stats_to_freqs,
-                            "adv_action_freqs": adv_action_stats_to_freqs,
+                        adv_to_results[adv_model_name].append({
+                            "Target Episode Return": eval_target,
+                            "Mean Episode Return": np.mean(episode_returns),
+                            "Std Episode Return": np.std(episode_returns),
+                            "Min Episode Return": np.min(episode_returns),
+                            "Median Episode Return": np.median(episode_returns),
+                            "Max Episode Return": np.max(episode_returns), 
+                            "Pr Action Stats": pr_actions_stats,
+                            "Est Adv Action Stats": est_adv_actions_stats,
+                            "Adv Action Stats": adv_actions_stats,
                         })
 
-            # save results
-            denom = "stochastic" if is_stochastic else "deterministic"
-            if not os.path.exists(f'{find_root_dir()}/results/{denom}/{env_name}/{agent_type}'):
-                os.makedirs(f'{find_root_dir()}/results/{denom}/{env_name}/{agent_type}')
-            with open(f'{find_root_dir()}/results/{denom}/{env_name}/{agent_type}/results.json', 'w') as f:
-                json.dump(everything_store, f)
+                        # save data_dict as hf dataset
+                        data_ds = Dataset.from_dict(data_dict)
+                        data_ds.save_to_disk(f'{find_root_dir()}/datasets/{model_name}_{adv_model_name}_eval_{env_name}_{eval_target}_{itr}')
+
+            # print out results
+            for adv_model_name, results in adv_to_results.items():
+                print("================================================")
+                print(f"For protagonist model {model_name} and adversary model {adv_model_name}. \n")
+
+                everything_store[f"{adv_model_name}"] = []
+
+                target_to_results = {}
+                for result in results:
+                    if result["Target Episode Return"] not in target_to_results:
+                        target_to_results[result["Target Episode Return"]] = defaultdict(list)
+                    target_to_results[result["Target Episode Return"]]["Mean Episode Return"].append(result["Mean Episode Return"])
+                    target_to_results[result["Target Episode Return"]]["Std Episode Return"].append(result["Std Episode Return"])
+                    target_to_results[result["Target Episode Return"]]["Min Episode Return"].append(result["Min Episode Return"])
+                    target_to_results[result["Target Episode Return"]]["Median Episode Return"].append(result["Median Episode Return"])
+                    target_to_results[result["Target Episode Return"]]["Max Episode Return"].append(result["Max Episode Return"])
+                    target_to_results[result["Target Episode Return"]]["Pr Action Stats"].append(result["Pr Action Stats"])
+                    target_to_results[result["Target Episode Return"]]["Est Adv Action Stats"].append(result["Est Adv Action Stats"])
+                    target_to_results[result["Target Episode Return"]]["Adv Action Stats"].append(result["Adv Action Stats"])
+
+                for target, results in target_to_results.items():
+                    print(f"Target Episode Return: {target}")
+                    print(f"Mean Episode Return: {np.mean(results['Mean Episode Return'])} +- {np.std(results['Mean Episode Return'])}")
+                    print(f"Std Episode Return: {np.mean(results['Std Episode Return'])} +- {np.std(results['Std Episode Return'])}")
+                    print(f"Min Episode Return: {np.mean(results['Min Episode Return'])} +- {np.std(results['Min Episode Return'])}")
+                    print(f"Median Episode Return: {np.mean(results['Median Episode Return'])} +- {np.std(results['Median Episode Return'])}")
+                    print(f"Max Episode Return: {np.mean(results['Max Episode Return'])} +- {np.std(results['Max Episode Return'])}")
+                    # unpack action stats
+                    pr_action_stats_to_freqs = defaultdict(list)
+                    for pr_action_stats in results['Pr Action Stats']:
+                        for pr_action, freq in pr_action_stats.items():
+                            pr_action_stats_to_freqs[pr_action].append(freq)
+                    for pr_action, freqs in pr_action_stats_to_freqs.items():
+                        print(f"Pr Action {pr_action}: {np.mean(freqs)} +- {np.std(freqs)}")
+                    #
+                    est_adv_action_stats_to_freqs = defaultdict(list)
+                    for est_adv_action_stats in results['Est Adv Action Stats']:
+                        for est_adv_action, freq in est_adv_action_stats.items():
+                            est_adv_action_stats_to_freqs[est_adv_action].append(freq)
+                    for est_adv_action, freqs in est_adv_action_stats_to_freqs.items():
+                        print(f"Est Adv Action {est_adv_action}: {np.mean(freqs)} +- {np.std(freqs)}")
+                    #
+                    adv_action_stats_to_freqs = defaultdict(list)
+                    for adv_action_stats in results['Adv Action Stats']:
+                        for adv_action, freq in adv_action_stats.items():
+                            adv_action_stats_to_freqs[adv_action].append(freq)
+                    for adv_action, freqs in adv_action_stats_to_freqs.items():
+                        print(f"Adv Action {adv_action}: {np.mean(freqs)} +- {np.std(freqs)}")
+                    print("================================================")
+
+                    # store results
+                    everything_store[f"{adv_model_name}"].append({
+                        "target_return": target,
+                        "mean_returns": list(results['Mean Episode Return']),
+                        "std_returns": list(results['Std Episode Return']),
+                        "pr_action_freqs": pr_action_stats_to_freqs,
+                        "est_adv_action_freqs": est_adv_action_stats_to_freqs,
+                        "adv_action_freqs": adv_action_stats_to_freqs,
+                    })
+
+        # save results
+        denom = "stochastic" if is_stochastic else "deterministic"
+        if not os.path.exists(f'{find_root_dir()}/results/{denom}/{env_name}/{agent_type}'):
+            os.makedirs(f'{find_root_dir()}/results/{denom}/{env_name}/{agent_type}')
+        with open(f'{find_root_dir()}/results/{denom}/{env_name}/{agent_type}/results.json', 'w') as f:
+            json.dump(everything_store, f)
 
     print("\n========================================================================================================================")
     print("Done. \n")
