@@ -32,7 +32,13 @@ class TrainableDT(DecisionTransformerModel):
             return {"loss": loss}
         else:
             # simply return predictions
-            action_preds = (output > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.act_dim)
+            if not self.config.is_stochastic:
+                # either deterministically
+                action_preds = (output > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.act_dim)
+            else:
+                # or by sampling
+                r = torch.rand(output.shape)
+                action_preds = (output > r).to(torch.int32).reshape(batch_size, -1, self.config.act_dim)
             if not kwargs.get("return_dict", False):
                 return (action_preds)
             return DecisionTransformerOutput(action_preds=action_preds)

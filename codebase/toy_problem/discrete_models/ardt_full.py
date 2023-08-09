@@ -23,10 +23,10 @@ class AdversarialDT(DecisionTransformerModel):
         self.embed_adv_action = torch.nn.Linear(config.adv_act_dim, config.hidden_size)
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
-        self.predict_mu = torch.nn.Linear(config.hidden_size, 1)
-        self.predict_sigma = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, 1)] + [StdReturnSquashFunc()] + [ExpFunc()])
+        self.predict_returns = torch.nn.Sequential(
+            *([torch.nn.Linear(config.hidden_size, len(config.discrete_returns))] + ([torch.nn.Softmax(dim=1)]))
         )
+
         self.predict_adv_action = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()]))
         )
@@ -108,15 +108,27 @@ class AdversarialDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        mu_preds = self.predict_mu(x[:, 1])
-        sigma_preds = self.predict_sigma(x[:, 1])  
-        rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # learn current return given history, return and state
+        return_probs = self.predict_returns(x[:, 1])
+        rtg_dist = torch.distributions.Categorical(return_probs)  # learn current return given history, return and state
+
+        if not self.config.is_stochastic:
+            # predict deterministically
+            pred_rtg_idx = torch.argmax(return_probs, dim=(len(return_probs.shape)-1))
+            rtg_preds = torch.tensor(self.config.discrete_returns, device=pred_rtg_idx.device, dtype=torch.float32)[pred_rtg_idx]  # predict return given history, return and state
+        else:
+            # predict by sampling
+            pred_rtg_idx = rtg_dist.sample()
+            rtg_preds = torch.tensor(self.config.discrete_returns, device=pred_rtg_idx.device, dtype=torch.float32)[pred_rtg_idx]  # predict return given history, return and state
+        if len(rtg_preds.shape) == 2:
+            rtg_preds = rtg_preds.unsqueeze(2)
 
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given return, state and pr_actions (latest pr action is zero-ed out)
 
         if is_train:
             # return loss
-            rtg_log_prob = rtg_dist.log_prob(returns_to_go)[attention_mask > 0].mean()
+            unique_rtgs = list(self.config.discrete_returns)
+            obs_rtg_idx = torch.tensor([unique_rtgs.index(v.item()) for v in returns_to_go.flatten()]).reshape(returns_to_go.shape).to(return_probs.device)
+            rtg_log_prob = rtg_dist.log_prob(obs_rtg_idx).mean()
 
             adv_action_preds_mask = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_targets_mask = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
@@ -126,19 +138,24 @@ class AdversarialDT(DecisionTransformerModel):
                     "rtg_log_prob": rtg_log_prob, 
                     "rtg_loss": -rtg_log_prob,
                     "adv_action_loss": adv_action_loss,
-                    "mu": mu_preds,
-                    "sigma": sigma_preds,
-                    "rtg_preds": rtg_dist.mean,
+                    "returns_probs": return_probs,
+                    "rtg_preds": rtg_preds,
                     "adv_action_preds": adv_action_preds}
         else:
             # return predictions
-            adv_action_preds = (adv_action_preds > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.adv_act_dim)
+            if not self.config.is_stochastic:
+                # predict deterministically
+                adv_action_preds = (adv_action_preds > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.adv_act_dim)
+            else:
+                # or by sampling
+                r = torch.rand(adv_action_preds.shape)
+                adv_action_preds = (adv_action_preds > r).to(torch.int32).reshape(batch_size, -1, self.config.adv_act_dim)
 
             if not return_dict:
-                return (rtg_dist.icdf(torch.tensor([0.025])), adv_action_preds)
+                return (rtg_preds, adv_action_preds)
 
             return DecisionTransformerOutput(
-                rtg_preds=rtg_dist.icdf(torch.tensor([0.025])),
+                rtg_preds=rtg_preds,
                 adv_action_preds=adv_action_preds,
                 # hidden_states=encoder_outputs.hidden_states,
                 # last_hidden_state=encoder_outputs.last_hidden_state,
@@ -255,7 +272,13 @@ class StochasticDT(DecisionTransformerModel):
                     "action_preds": action_preds}
         else:
             # return predictions
-            pr_action_preds = (action_preds > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.pr_act_dim)
+            if not self.config.is_stochastic:
+                # either deterministically
+                pr_action_preds = (action_preds > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.pr_act_dim)
+            else:
+                # or by sampling
+                r = torch.rand(action_preds.shape)
+                pr_action_preds = (action_preds > r).to(torch.int32).reshape(batch_size, -1, self.config.act_dim)
 
             if not return_dict:
                 return (pr_action_preds)
@@ -384,6 +407,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
 
             in_adv_action_preds = adv_action_preds.clone()
             in_adv_action_preds = in_adv_action_preds.to(torch.float32)
+
             sdt_out = self.sdt.forward(
                 is_train=is_train,
                 states=states,

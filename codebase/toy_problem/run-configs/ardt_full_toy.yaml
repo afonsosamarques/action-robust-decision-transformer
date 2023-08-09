@@ -6,15 +6,15 @@ environment_config:
 
 dataset_config:
   is_local: [true]  
-  online_policy_names: ["toy_dataset"]  
+  online_policy_names: ["toy_dataset", "toy_dataset", "toy_dataset"]  
   dataset_types: [""]  
-  dataset_versions: ["v2"]  # here we add the versioning! v1, v2, etc. Very Important!!!
+  dataset_versions: ["v1", "v2", "v3"]  # here we add the versioning! v1, v2, etc. Very Important!!!
 
 model_config:
   agent_type: "ardt-full"  # dt, ardt-simplest, ardt-vanilla, ardt-full
   context_size: [2]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
   lambda1: [0.0]  # these are for different parameter combinations to try!!
-  lambda2: [4.0]  # these are for different parameter combinations to try!!
+  lambda2: [3.0]  # these are for different parameter combinations to try!!
 
 training_config:
   train_steps: 4  # 6 => 10**6
@@ -22,7 +22,7 @@ training_config:
   learning_rate: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   weight_decay: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   max_grad_norm: [0.25]  # these are for different parameter combinations to try!! | original: 0.25
-  warmup_steps: [2]  # these are for different parameter combinations to try!! again 4 => 10**4 | original: 10**5
+  warmup_steps: [3]  # these are for different parameter combinations to try!! again 4 => 10**4 | original: 10**5
 
 evaluation_config:
   is_eval: true 

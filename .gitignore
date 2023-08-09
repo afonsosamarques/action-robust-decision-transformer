@@ -6,6 +6,7 @@ agents*/
 trained-models*/
 eval-outputs*/
 env-sims*/
+results*/
 wandb*/
 run-configs-store/
 eval_store/

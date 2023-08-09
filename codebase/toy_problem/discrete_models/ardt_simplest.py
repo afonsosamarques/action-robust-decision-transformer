@@ -127,8 +127,17 @@ class SimpleRobustDT(DecisionTransformerModel):
             return {"loss": pr_action_loss + adv_action_loss}
         else:
             # return predictions
-            pr_action_preds = (pr_action_preds > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.pr_act_dim)
-            adv_action_preds = (adv_action_preds > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.adv_act_dim)
+            if not self.config.is_stochastic:
+                # either deterministically
+                pr_action_preds = (pr_action_preds > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.pr_act_dim)
+                adv_action_preds = (adv_action_preds > 0.5).to(torch.int32).reshape(batch_size, -1, self.config.adv_act_dim)
+            else:
+                # or by sampling
+                r = torch.rand(pr_action_preds.shape)
+                pr_action_preds = (pr_action_preds > r).to(torch.int32).reshape(batch_size, -1, self.config.act_dim)
+
+                r = torch.rand(adv_action_preds.shape)
+                adv_action_preds = (adv_action_preds > r).to(torch.int32).reshape(batch_size, -1, self.config.adv_act_dim)
 
             if not return_dict:
                 return (pr_action_preds, adv_action_preds)
