@@ -203,7 +203,6 @@ class BetaParamsSquashFunc(torch.nn.Module):
 
 
 class StdReturnSquashFunc(torch.nn.Module):
-    # HACK HACK HACK HACK
     def __init__(self):
         super().__init__()
 
@@ -212,7 +211,7 @@ class StdReturnSquashFunc(torch.nn.Module):
         return min_log_std + 0.5 * (max_log_std - min_log_std) * (torch.tanh(p) + 1.0)
     
 
-class StdSquashFunc(torch.nn.Module):
+class StdActionSquashFunc(torch.nn.Module):
     def __init__(self):
         super().__init__()
 

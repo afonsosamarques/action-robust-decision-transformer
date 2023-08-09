@@ -4,7 +4,7 @@ import torch
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
 from .ardt_utils import DecisionTransformerOutput, ADTEvalWrapper
-from .ardt_utils import StdSquashFunc, ExpFunc
+from .ardt_utils import StdActionSquashFunc, ExpFunc
 
 
 # FIXME: not currently being updated, do not use!!!
@@ -30,7 +30,7 @@ class SingleAgentRobustDT(DecisionTransformerModel):
             *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()]))
         )
         self.predict_sigma = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdSquashFunc()] + [ExpFunc()])
+            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdActionSquashFunc()] + [ExpFunc()])
         )
         self.predict_adv_action = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()]))
