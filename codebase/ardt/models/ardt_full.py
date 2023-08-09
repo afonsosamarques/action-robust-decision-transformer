@@ -301,8 +301,8 @@ class TwoAgentRobustDT(DecisionTransformerModel):
         if is_train:
             # decay lambda1
             if self.step > self.config.warmup_steps:
-                mid_ep_step = self.config.max_ep_len // 2
-                lambda1_mid_target = self.start_lambda1 // 10
+                mid_ep_step = self.config.total_train_steps // 2
+                lambda1_mid_target = self.start_lambda1 / 10
                 if self.config.lambda1 <= 0:
                     self.config.lambda1 = 0
                 elif self.config.lambda1 > lambda1_mid_target:

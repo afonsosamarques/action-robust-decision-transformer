@@ -37,7 +37,7 @@ def train(
         run_suffix='',
         device=torch.device('cpu'),
     ):
-    num_workers = (2 if device == torch.device('mps') or device == torch.device("cpu") else min(4, os.cpu_count()-2))
+    num_workers = (4 if device == torch.device('mps') or device == torch.device("cpu") else min(4, os.cpu_count()-2))
     print("============================================================================================================")
     print(f"\nTraining {model_name} on dataset {dataset_name} on device {device} with a total of {num_workers} cores for data loading. Starting at {datetime.datetime.now()}.\n")
     print("================================================")
@@ -79,6 +79,7 @@ def train(
         min_obs_return=collator.min_ep_return,
         warmup_steps=train_params['warmup_steps'],  # exception: this is used in training but due to HF API it must be in config as well
         log_interval_steps=100,
+        total_train_steps=train_params['train_steps']
     )
 
     # here we define the training protocol

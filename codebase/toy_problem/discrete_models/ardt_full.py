@@ -28,7 +28,7 @@ class AdversarialDT(DecisionTransformerModel):
         )
 
         self.predict_adv_action = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()]))
+            *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Sigmoid()]))
         )
 
         self.post_init()
@@ -128,7 +128,7 @@ class AdversarialDT(DecisionTransformerModel):
             # return loss
             unique_rtgs = list(self.config.discrete_returns)
             obs_rtg_idx = torch.tensor([unique_rtgs.index(v.item()) for v in returns_to_go.flatten()]).reshape(returns_to_go.shape).to(return_probs.device)
-            rtg_log_prob = rtg_dist.log_prob(obs_rtg_idx).mean()
+            rtg_log_prob = rtg_dist.log_prob(obs_rtg_idx.squeeze()).mean()
 
             adv_action_preds_mask = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_targets_mask = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
@@ -178,11 +178,8 @@ class StochasticDT(DecisionTransformerModel):
         self.embed_pr_action = torch.nn.Linear(config.pr_act_dim, config.hidden_size)
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
-        self.predict_mu = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()]))
-        )
-        self.predict_sigma = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + [StdSquashFunc()] + [ExpFunc()])
+        self.predict_action = torch.nn.Sequential(
+            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Sigmoid()]))
         )
 
         self.post_init()
