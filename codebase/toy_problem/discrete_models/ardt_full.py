@@ -24,7 +24,7 @@ class AdversarialDT(DecisionTransformerModel):
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
         self.predict_returns = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, len(config.discrete_returns))] + ([torch.nn.Softmax(dim=1)]))
+            *([torch.nn.Linear(config.hidden_size, len(config.discrete_returns))] + ([torch.nn.Softmax(dim=-1)]))
         )
 
         self.predict_adv_action = torch.nn.Sequential(
@@ -332,7 +332,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                 adv_actions_filtered=adv_actions_filtered,
                 rewards=rewards,
                 returns_to_go=returns_to_go,
-                returns_to_go_scaled=(returns_to_go if returns_to_go_scaled is None else returns_to_go_scaled),
+                returns_to_go_scaled=returns_to_go,
                 timesteps=timesteps,
                 attention_mask=attention_mask,
                 output_hidden_states=output_hidden_states,

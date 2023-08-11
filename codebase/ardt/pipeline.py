@@ -36,6 +36,7 @@ def train(
         is_offline_log=False,
         run_suffix='',
         device=torch.device('cpu'),
+        flag=False,
     ):
     num_workers = (4 if device == torch.device('mps') or device == torch.device("cpu") else min(4, os.cpu_count()-2))
     print("============================================================================================================")
@@ -73,13 +74,15 @@ def train(
         returns_scale=env_params['returns_scale'],
         max_ep_len=max(max_ep_len, collator.max_ep_len),
         max_obs_len=collator.max_ep_len,
-        max_ep_return=max(env_max_return, collator.max_ep_return),
+        max_ep_return=env_max_return,
         max_obs_return=collator.max_ep_return,
         min_ep_return=collator.min_ep_return,
         min_obs_return=collator.min_ep_return,
         warmup_steps=train_params['warmup_steps'],  # exception: this is used in training but due to HF API it must be in config as well
         log_interval_steps=100,
-        total_train_steps=train_params['train_steps']
+        total_train_steps=train_params['train_steps'],
+        flag=flag,
+        random_flag=(env_params['max_ep_return'] == 5300)
     )
 
     # here we define the training protocol
@@ -88,7 +91,7 @@ def train(
         project=wandb_project,
         name=model_name,
         id=model_name,
-        tags=[model_name, dataset_name, env_params['env_name'], run_suffix],
+        tags=[model_name],
         dir=f"{find_root_dir()}",
         settings=wandb.Settings(_service_wait=120)  # NOTE have to wait for as long as it takes, because cluster connection is a problem
     )
@@ -174,7 +177,8 @@ if __name__ == "__main__":
     # load config
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_name', type=str, required=True, help='Name of yaml configuration file to use.')
-    parser.add_argument('--is_test_run', action='store_true', help='Whether this is a test run. Set if it is, ignore if it is not.')
+    parser.add_argument('--flag', action='store_true', help='Flag if we want to try something different without changing the entire code.')
+    parser.add_argument('--is_test_run', action='store_true', help='To do a short run to try code out.')
     args = parser.parse_args()
 
     with open(f'{find_root_dir()}/run-configs/{args.config_name}.yaml', 'r') as f:
@@ -273,6 +277,7 @@ if __name__ == "__main__":
                 is_offline_log=is_offline_log,
                 run_suffix=run_suffix,
                 device=device,
+                flag=args.flag
             )
 
             # evaluate if desired

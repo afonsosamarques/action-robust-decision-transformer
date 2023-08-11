@@ -6,9 +6,9 @@ environment_config:
 
 dataset_config:
   is_local: [true]  
-  online_policy_names: ["toy_dataset", "toy_dataset", "toy_dataset"]  
+  online_policy_names: ["toy_dataset"]  
   dataset_types: [""]  
-  dataset_versions: ["v1", "v2", "v3"]  # here we add the versioning! v1, v2, etc. Very Important!!!
+  dataset_versions: ["v3"]  # here we add the versioning! v1, v2, etc. Very Important!!!
 
 model_config:
   agent_type: "dt"  # dt, ardt-simplest, ardt-vanilla, ardt-full
@@ -36,6 +36,6 @@ evaluation_config:
 admin_config:
   wandb_project: "Experiment-2"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
   hf_project: "Experiment-2"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
-  run_type: "pipeline"  # "core", "pipeline", or "test"
+  run_type: "test"  # "core", "pipeline", or "test"
   is_verbose: false  # whether to print anything at all
   print_tracebacks: false  # whether to print tracebacks of errors

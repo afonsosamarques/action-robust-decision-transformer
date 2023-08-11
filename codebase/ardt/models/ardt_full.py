@@ -110,14 +110,14 @@ class AdversarialDT(DecisionTransformerModel):
         mu_preds = self.predict_mu(x[:, 1])
         sigma_preds = self.predict_sigma(x[:, 1])  
         rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # predict next return given past, return and state
-        rtg_sample = rtg_dist.rsample((batch_size,))
+        rtg_sample = rtg_dist.rsample()
 
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given past, return, state and pr_action (latest pr action is zero-ed out)
 
         if is_train:
             # return loss
             rtg_log_prob = rtg_dist.log_prob(returns_to_go)[attention_mask > 0].mean()
-            rtg_entropy = -rtg_dist.log_prob(rtg_sample).mean(axis=0).sum(axis=2).mean()
+            rtg_entropy = -rtg_dist.log_prob(rtg_sample).mean(axis=0).mean()
             rtg_loss = -(rtg_log_prob + self.config.lambda1 * rtg_entropy)
 
             adv_action_preds_mask = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
@@ -131,15 +131,15 @@ class AdversarialDT(DecisionTransformerModel):
                     "adv_action_loss": adv_action_loss,
                     "mu": mu_preds,
                     "sigma": sigma_preds,
-                    "rtg_preds": rtg_dist.mean,
+                    "rtg_preds": mu_preds if not self.config.flag else rtg_sample,
                     "adv_action_preds": adv_action_preds}
         else:
             # return predictions
             if not return_dict:
-                return (rtg_dist.icdf(torch.tensor([0.5], device=stacked_inputs.device)), adv_action_preds)
+                return (rtg_dist.icdf(torch.tensor([0.05], device=stacked_inputs.device)), adv_action_preds)
 
             return DecisionTransformerOutput(
-                rtg_preds=rtg_dist.icdf(torch.tensor([0.5], device=stacked_inputs.device)),
+                rtg_preds=rtg_dist.icdf(torch.tensor([0.05], device=stacked_inputs.device)),
                 adv_action_preds=adv_action_preds,
                 # hidden_states=encoder_outputs.hidden_states,
                 # last_hidden_state=encoder_outputs.last_hidden_state,
@@ -304,6 +304,10 @@ class TwoAgentRobustDT(DecisionTransformerModel):
         #
         # easier if we simply separate between training and testing straight away
         if is_train:
+            # deal with adv actions simplification
+            if self.config.random_flag is True:
+                adv_actions = torch.round(adv_actions * 1e3) / 1e3
+
             # decay lambda1 after warmup
             if self.step > self.config.warmup_steps:
                 mid_ep_step = self.config.total_train_steps // 2
@@ -353,7 +357,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                     pr_actions_filtered=pr_actions_filtered,
                     adv_actions=adv_actions_hal,
                     rewards=rewards,
-                    returns_to_go=returns_to_go,
+                    returns_to_go=returns_to_go if not self.config.flag else adt_out['rtg_preds'],
                     timesteps=timesteps,
                     attention_mask=attention_mask,
                     output_hidden_states=output_hidden_states,

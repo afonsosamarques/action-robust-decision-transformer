@@ -31,6 +31,7 @@ from ardt.access_tokens import HF_WRITE_TOKEN
 
 
 N_MODELS = 30
+EVAL_ITERS = 1024
 
 
 ############# We need local versions of these #############
@@ -87,7 +88,7 @@ def train(
         device=torch.device('cpu'),
         is_stochastic=False,
     ):
-    num_workers = 1
+    num_workers = os.cpu_count() - 2
 
     print("============================================================================================================")
     print(f"\nTraining {model_name} on dataset {dataset_name} on device {device} with a total of {num_workers} cores for data loading. Starting at {datetime.datetime.now()}.\n")
@@ -338,7 +339,7 @@ if __name__ == "__main__":
                         # setting up environments for parallel runs
                         envs = []
                         start_states = []
-                        for n in range(1000):
+                        for n in range(EVAL_ITERS):
                             env = OneStepEnvVOne() if dataset_version == "v1" else (OneStepEnvVTwo() if dataset_version == "v2" else OneStepEnvVThree())
                             state, _ = env.reset()
                             envs.append(env)
@@ -346,9 +347,9 @@ if __name__ == "__main__":
                         start_states = np.array(start_states)
 
                         # evaluation loop
-                        episode_returns = np.zeros(1000)
+                        episode_returns = np.zeros(EVAL_ITERS)
                         data_dict = defaultdict(list)
-                        for i in range(1000):
+                        for i in range(EVAL_ITERS):
                             data_dict['observations'].append([])
                             data_dict['pr_actions'].append([])
                             data_dict['est_adv_actions'].append([])
