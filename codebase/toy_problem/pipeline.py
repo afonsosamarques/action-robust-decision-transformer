@@ -4,6 +4,7 @@ import itertools
 import os
 import subprocess
 import json
+import random
 
 import numpy as np
 import torch
@@ -69,6 +70,17 @@ def load_model(model_type, model_to_use, model_path):
         return model.from_pretrained(model_path), True
     else:
         raise Exception(f"Model {model_to_use} of type {model_type} not available.")
+    
+
+def set_seed_everywhere(seed, env=None):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.mps.manual_seed(seed)
+    if env is not None:
+        env.seed = seed
+        env.action_space.seed = seed
+
 
 ############################################################
 
@@ -267,6 +279,8 @@ if __name__ == "__main__":
             adv_to_results = defaultdict(list)
 
             for itr in range(N_MODELS):
+                set_seed_everywhere(seed=itr)
+
                 model_params = {
                     'context_size': params_combination[0],
                     'lambda1': params_combination[1],
