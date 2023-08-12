@@ -53,7 +53,7 @@ if __name__ == "__main__":
                         help='number of epochs (default: None)')
     parser.add_argument('--num_epochs_cycles', type=int, default=20, metavar='N')
     parser.add_argument('--num_rollout_steps', type=int, default=100, metavar='N')
-    parser.add_argument('--num_steps', type=int, default=500000, metavar='N',
+    parser.add_argument('--num_steps', type=int, default=1000000, metavar='N',
                         help='number of training steps (default: 500000)')
     parser.add_argument('--hidden_size_dim0', type=int, default=64, metavar='N',
                         help='number of neurons in the hidden layers (default: 64)')
@@ -67,7 +67,7 @@ if __name__ == "__main__":
                         help='control given to adversary (default: 0.1)')
     parser.add_argument('--exploration_method', default=None, choices=['mdp', 'nr_mdp'])
     parser.add_argument('--visualize', default=False, action='store_true')
-    parser.add_argument('--epsilon', type=float, default=1e-3, help='thermal noise (default: 1e-2 to 1e-5))')
+    parser.add_argument('--epsilon', type=float, default=1e-4, help='thermal noise (default: 1e-2 to 1e-5))')
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--beta', type=float, default=0.9, help='beta (default: 0.9)')
     parser.add_argument('--optimizer', default='SGLD', choices=['SGLD', 'RMSprop', 'ExtraAdam'] )
