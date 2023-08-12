@@ -32,7 +32,7 @@ def get_free_gpu():
 def normalize(x, stats, device):
     if stats is None:
         return x
-    return (x - torch.tensor(stats.mean, dtype=torch.float32).to(device)) / torch.rensor(stats.var, dtype=torch.float32).sqrt().to(device)
+    return (x - torch.tensor(stats.mean, dtype=torch.float32).to(device)) / torch.tensor(stats.var, dtype=torch.float32).sqrt().to(device)
 
 
 def denormalize(x, stats):
@@ -365,16 +365,16 @@ class DDPG:
 
 
 class DDPGEvalWrapper(EvalWrapper):
-    def __init__(self, model, mdp_type=None, **kwargs):
+    def __init__(self, model, mdp_type="nr_mdp", **kwargs):
         super().__init__(model)
         self.mdp_type = mdp_type
     
     def get_action(self, state):
         state = torch.tensor(state, dtype=torch.float32)
         action, pr_action, adv_action = self.model.select_action(state, mdp_type=self.mdp_type)
-        return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()
+        return pr_action.detach().cpu().numpy(), torch.tensor(self.model.alpha) * adv_action.detach().cpu().numpy()
 
     def get_batch_actions(self, states):
         states = torch.tensor(states, dtype=torch.float32)
         actions, pr_actions, adv_actions = self.model.select_action(states, mdp_type=self.mdp_type)
-        return pr_actions.detach().cpu().numpy(), adv_actions.detach().cpu().numpy()
+        return pr_actions.detach().cpu().numpy(), torch.tensor(self.model.alpha) * adv_actions.detach().cpu().numpy()

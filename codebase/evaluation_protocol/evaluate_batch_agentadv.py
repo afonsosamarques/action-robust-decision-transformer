@@ -48,7 +48,7 @@ def evaluate(
         print(f"Could not load adversary model {adv_model_name} from repo.")
         raise e
     adv_model.to(device)
-    adv_model = adv_model.eval(mdp_type=('pr_mdp' if 'pr_mdp' in adv_model_path else ('nr_mdp' if 'nr_mdp' in adv_model_path else None)))
+    adv_model = adv_model.eval(mdp_type='nr_mdp')
     if not is_adv_adv_model:
         raise RuntimeError("Adversarial agent does not include any adversarial element, therefore cannot be used as such.")
 

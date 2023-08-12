@@ -232,7 +232,6 @@ if __name__ == "__main__":
                 del policy_losses[:]
                 del adversary_losses[:]
 
-            # evaluate policy
             with torch.no_grad():
                 for t_rollout in range(args.num_rollout_steps):
                     action = agent.select_action(eval_state, mdp_type='mdp')

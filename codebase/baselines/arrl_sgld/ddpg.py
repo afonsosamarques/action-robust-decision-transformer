@@ -149,15 +149,16 @@ class DDPG:
             if action_noise is not None:
                 mu += torch.tensor(action_noise(), dtype=torch.float32).to(self.device)
 
-            pr_mu = mu.clamp(-1, 1) * (1 - self.alpha)
-            mu = pr_mu
+            pr_mu = mu.clamp(-1, 1)
+            mu = pr_mu * (1 - self.alpha)
 
             if(self.optimizer == 'SGLD' and self.two_player):
                 adv_mu = self.adversary_outer(state)
             else:
                 adv_mu = self.adversary(state)
-            adv_mu = adv_mu.data.clamp(-1, 1) * self.alpha
-            mu += adv_mu
+
+            adv_mu = adv_mu.data.clamp(-1, 1)
+            mu += adv_mu * self.alpha
 
             return mu, pr_mu, adv_mu
             
@@ -387,17 +388,16 @@ class DDPG:
 
 
 class DDPGSGLDEvalWrapper(EvalWrapper):
-    def __init__(self, model, mdp_type=None, **kwargs):
+    def __init__(self, model, mdp_type="nr_mdp", **kwargs):
         super().__init__(model)
         self.mdp_type = mdp_type
     
     def get_action(self, state):
         state = torch.tensor(state, dtype=torch.float32)
         action, pr_action, adv_action = self.model.select_action(state, mdp_type=self.mdp_type)
-        return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()  
+        return pr_action.detach().cpu().numpy(), torch.tensor(self.model.alpha) * adv_action.detach().cpu().numpy()  
     
     def get_batch_actions(self, states):
         states = torch.tensor(states, dtype=torch.float32)
         actions, pr_actions, adv_actions = self.model.select_action(states, mdp_type=self.mdp_type)
-        return pr_actions.detach().cpu().numpy(), adv_actions.detach().cpu().numpy()
-    
+        return pr_actions.detach().cpu().numpy(), torch.tensor(self.model.alpha) * adv_actions.detach().cpu().numpy()

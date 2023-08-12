@@ -16,10 +16,11 @@ def save_model(agent, actor, adversary, obs_rms, rew_rms, basedir=None):
     torch.save(adversary.state_dict(), adversary_path)
 
     var_dict = {'obs_rms_mean': None, 'obs_rms_var': None, 'rew_rms_mean': None, 'rew_rms_var': None,
+                'learning_rate': agent.learning_rate,
                 'hidden_size_dim0': agent.hidden_size_dim0,
                 'hidden_size_dim1': agent.hidden_size_dim1, 
                 'two_player': agent.two_player,
-                'num_inputs': agent.num_inputs, 'adversary_action_space': agent.action_space, 
+                'num_inputs': agent.num_inputs, 'action_space': agent.action_space, 
                 'gamma': agent.gamma, 'tau': agent.tau, 'beta': agent.beta, 'epsilon': agent.epsilon}
     if obs_rms is not None:
         var_dict['obs_rms_mean'] = obs_rms.mean
