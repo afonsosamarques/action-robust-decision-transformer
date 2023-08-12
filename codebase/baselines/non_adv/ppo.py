@@ -4,13 +4,22 @@ import gymnasium as gym
 import numpy as np
 import torch
 import random
+import os
+import subprocess
 
 from collections import defaultdict
 from datasets import Dataset
 from stable_baselines3 import PPO
 
-from gym_wrapper import GymWrapperRecorder
+from .gym_wrapper import GymWrapperRecorder
 
+
+def find_root_dir():
+    try:
+        root_dir = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).strip().decode('utf-8')
+    except Exception as e:
+        root_dir = os.getcwd()[:os.getcwd().find('action-robust-decision-transformer')+len('action-robust-decision-transformer')]
+    return root_dir + ('' if root_dir.endswith('action-robust-decision-transformer') else '/action-robust-decision-transformer') + "/codebase/baselines/non_adv"
 
 
 def load_env_name(env_type):
@@ -48,12 +57,17 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # train model
+    print("Training model...")
     env = GymWrapperRecorder(gym.make(env_name))
-    model = PPO("MlpPolicy", env, verbose=0, device=device)
-    model.learn(total_timesteps=args.train_steps, progress_bar=True, seed=args.version, log_interval=args.train_steps//10)
-    model.save(f"./agents/{model_name}")
+    model = PPO("MlpPolicy", env, verbose=0, device=device, seed=args.version)
+    model.learn(total_timesteps=args.train_steps, progress_bar=True, log_interval=args.train_steps//10)
+    model.save(f"{find_root_dir()}/agents/{model_name}")
+    
+    # # in case we want to use an already trained model!!
+    # model = PPO.load(f"{find_root_dir()}/agents/{model_name}")
 
     # store training data
+    print("Storing training data...")
     td = env.get_all_episodes()
     d = defaultdict(list)
     returns = []
@@ -66,13 +80,14 @@ if __name__ == "__main__":
 
     print(f"Episode returns | Avg: {np.round(np.mean(returns), 4)} | Std: {np.round(np.std(returns), 4)} | Min: {np.round(np.min(returns), 4)} | Median: {np.round(np.median(returns), 4)} | Max: {np.round(np.max(returns), 4)}")
     ds = Dataset.from_dict(d)
-    ds.save_to_disk(f'./datasets/{model_name}_train_v{args.version}') 
+    ds.save_to_disk(f'{find_root_dir()}/datasets/{model_name}_train_v{args.version}') 
 
-    # collect evaluation data
+    # collect and store evaluation data
+    print("Collecting evaluation data...")
     eval_dict = defaultdict(list)
     env = GymWrapperRecorder(gym.make(env_name))
 
-    for i in range(args.eval_steps + 1):
+    for i in range(args.eval_trajs + 1):
         set_seed_everywhere(i)
         ep_return = 0
         ep_len = 0
@@ -94,7 +109,6 @@ if __name__ == "__main__":
     print(f"Episode lengths | Avg: {np.round(np.mean(eval_dict['ep_length']), 4)} | Std: {np.round(np.std(eval_dict['ep_length']), 4)} | Min: {np.round(np.min(eval_dict['ep_length']), 4)} | Median: {np.round(np.median(eval_dict['ep_length']), 4)} | Max: {np.round(np.max(eval_dict['ep_length']), 4)}")
     print(f"Episode returns | Avg: {np.round(np.mean(eval_dict['ep_return']), 4)} | Std: {np.round(np.std(eval_dict['ep_return']), 4)} | Min: {np.round(np.min(eval_dict['ep_return']), 4)} | Median: {np.round(np.median(eval_dict['ep_return']), 4)} | Max: {np.round(np.max(eval_dict['ep_return']), 4)}")
 
-    # store eval dataset
     td = env.get_all_episodes()
     d = defaultdict(list)
     for t in td:
@@ -104,4 +118,4 @@ if __name__ == "__main__":
         d['dones'].append(list(t['dones']))
 
     ds = Dataset.from_dict(d)
-    ds.save_to_disk(f'./datasets/{model_name}_test_v{args.version}') 
+    ds.save_to_disk(f'{find_root_dir()}/datasets/{model_name}_test_v{args.version}') 
