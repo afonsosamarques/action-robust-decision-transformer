@@ -7,7 +7,7 @@ class Actor(nn.Module):
     def __init__(self, hidden_size_dim0, hidden_size_dim1, num_inputs, action_space):
         super(Actor, self).__init__()
         self.action_space = action_space
-        num_outputs = action_space.shape[0]
+        num_outputs = action_space if isinstance(action_space, int) else action_space.shape[0]
 
         self.linear1 = nn.Linear(num_inputs, hidden_size_dim0)
         nn.init.normal_(self.linear1.weight, 0.0, 0.02)
@@ -29,7 +29,7 @@ class Critic(nn.Module):
     def __init__(self, hidden_size_dim0, hidden_size_dim1, num_inputs, action_space):
         super(Critic, self).__init__()
         self.action_space = action_space
-        num_outputs = action_space.shape[0]
+        num_outputs = action_space if isinstance(action_space, int) else action_space.shape[0]
 
         self.linear1 = nn.Linear(num_inputs + num_outputs, hidden_size_dim0)
         nn.init.normal_(self.linear1.weight, 0.0, 0.02)

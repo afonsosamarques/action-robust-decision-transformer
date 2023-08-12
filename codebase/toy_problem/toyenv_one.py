@@ -26,11 +26,11 @@ class OneStepEnvVOne(gym.Env):
     @classmethod
     def get_correct_pr_action(cls, target):
         if target == 0.5:
-            return [([0.0], 1.0)]
+            return [([0], 1.0)]
         elif target == 2.0:
-            return [([0.0], 0.5), ([1], 0.5)]
+            return [([0], 0.5), ([1], 0.5)]
         elif target == 1.5:
-            return [([1.0], 1.0)]
+            return [([1], 1.0)]
         else:
             raise ValueError(f"Invalid target: {target}")
         

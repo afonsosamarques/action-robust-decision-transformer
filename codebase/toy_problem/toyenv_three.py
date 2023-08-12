@@ -55,7 +55,7 @@ class OneStepEnvVThree(gym.Env):
         elif target == 2.5:
             return [([0], 1.0)]
         elif target == 3.0:
-            return [([0], 1.0)]
+            return [([1], 1.0)]
         elif target == 0.75:
             return [([1], 1.0)]
         elif target == 1.0:

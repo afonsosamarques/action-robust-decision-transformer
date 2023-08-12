@@ -389,10 +389,15 @@ class DDPG:
 class DDPGSGLDEvalWrapper(EvalWrapper):
     def __init__(self, model, mdp_type=None, **kwargs):
         super().__init__(model)
-        assert mdp_type == 'nr_mdp', "Only valid mdp type at evaluation time is NR-MDP."
         self.mdp_type = mdp_type
     
     def get_action(self, state):
         state = torch.tensor(state, dtype=torch.float32)
         action, pr_action, adv_action = self.model.select_action(state, mdp_type=self.mdp_type)
         return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()  
+    
+    def get_batch_actions(self, states):
+        states = torch.tensor(states, dtype=torch.float32)
+        actions, pr_actions, adv_actions = self.model.select_action(states, mdp_type=self.mdp_type)
+        return pr_actions.detach().cpu().numpy(), adv_actions.detach().cpu().numpy()
+    
