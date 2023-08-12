@@ -79,7 +79,7 @@ if __name__ == "__main__":
     args.env_name = load_env_name(args.env_name)
     args.action_noise = not args.no_action_noise
     args.two_player = not args.one_player
-    args.device = torch.device(args.device) if args.device != '' else None
+    args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # build the folder the store the results
     if args.exploration_method is None:
