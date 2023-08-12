@@ -110,15 +110,13 @@ class AdversarialDT(DecisionTransformerModel):
         mu_preds = self.predict_mu(x[:, 1])
         sigma_preds = self.predict_sigma(x[:, 1])  
         rtg_dist = torch.distributions.Normal(mu_preds, sigma_preds)  # predict next return given past, return and state
-        rtg_sample = rtg_dist.rsample()
 
         adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next action given past, return, state and pr_action (latest pr action is zero-ed out)
 
         if is_train:
             # return loss
             rtg_log_prob = rtg_dist.log_prob(returns_to_go)[attention_mask > 0].mean()
-            rtg_entropy = -rtg_dist.log_prob(rtg_sample).mean(axis=0).mean()
-            rtg_loss = -(rtg_log_prob + self.config.lambda1 * rtg_entropy)
+            rtg_loss = -rtg_log_prob
 
             adv_action_preds_mask = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_targets_mask = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
@@ -126,12 +124,11 @@ class AdversarialDT(DecisionTransformerModel):
                 
             return {"loss": rtg_loss + self.config.lambda2 * adv_action_loss,
                     "rtg_log_prob": rtg_log_prob, 
-                    "rtg_entropy": rtg_entropy,
                     "rtg_loss": rtg_loss,
                     "adv_action_loss": adv_action_loss,
                     "mu": mu_preds,
                     "sigma": sigma_preds,
-                    "rtg_preds": mu_preds if not self.config.flag else rtg_sample,
+                    "rtg_preds": mu_preds,
                     "adv_action_preds": adv_action_preds}
         else:
             # return predictions
@@ -304,10 +301,6 @@ class TwoAgentRobustDT(DecisionTransformerModel):
         #
         # easier if we simply separate between training and testing straight away
         if is_train:
-            # deal with adv actions simplification
-            if self.config.random_flag is True:
-                adv_actions = torch.round(adv_actions * 1e3) / 1e3
-
             # decay lambda1 after warmup
             if self.step > self.config.warmup_steps:
                 mid_ep_step = self.config.total_train_steps // 2
@@ -357,7 +350,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                     pr_actions_filtered=pr_actions_filtered,
                     adv_actions=adv_actions_hal,
                     rewards=rewards,
-                    returns_to_go=returns_to_go if not self.config.flag else adt_out['rtg_preds'],
+                    returns_to_go=returns_to_go,
                     timesteps=timesteps,
                     attention_mask=attention_mask,
                     output_hidden_states=output_hidden_states,
@@ -370,12 +363,10 @@ class TwoAgentRobustDT(DecisionTransformerModel):
             if adt_out is not None:
                 for i in range(adt_out['mu'].shape[2]):
                     dist_params[f"mu_rtg"] =  torch.mean(adt_out['mu'][:, :, i]).item()
-                    dist_params[f"sigma_rtg"] =  torch.mean(adt_out['sigma'][:, :, i]).item()
-
             if sdt_out is not None:
                 for i in range(sdt_out['mu'].shape[2]):
-                    dist_params[f"mu_{i+1}"] =  torch.mean(sdt_out['mu'][:, :, i]).item()
-                    dist_params[f"sigma_{i+1}"] =  torch.mean(sdt_out['sigma'][:, :, i]).item()
+                    dist_params[f"mu_act_{i+1}"] =  torch.mean(sdt_out['mu'][:, :, i]).item()
+                    dist_params[f"sigma_act_{i+1}"] =  torch.mean(sdt_out['sigma'][:, :, i]).item()
         
             if self.logger is not None and (self.step == 0 or self.step % self.config.log_interval_steps == 0):
                 self.logger.add_entry(
@@ -383,8 +374,7 @@ class TwoAgentRobustDT(DecisionTransformerModel):
                     hyperparams={"lambda1": self.config.lambda1, "lambda2": self.config.lambda2},
                     tr_losses={"loss": loss,
                                "rtg_loss": adt_out['rtg_loss'], 
-                               "rtg_log_prob": adt_out['rtg_log_prob'], 
-                               "rtg_entropy": adt_out['rtg_entropy'],
+                               "rtg_log_prob": adt_out['rtg_log_prob'],
                                "adv_action_loss": adt_out['adv_action_loss'],
                                "pr_action_loss": 0 if sdt_out is None else sdt_out['loss'],
                                "pr_action_log_prob": 0 if sdt_out is None else sdt_out['pr_action_log_prob'], 
