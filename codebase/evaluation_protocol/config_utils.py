@@ -46,7 +46,7 @@ def load_arrl_model(path):
     var_dict = torch.load(f"{path}/ddpg_vars")
 
     agent = DDPG(gamma=var_dict['gamma'], tau=var_dict['tau'], hidden_size=var_dict['hidden_size'], num_inputs=var_dict['num_inputs'],
-                 action_space=var_dict['action_space'], train_mode=False, alpha=0, replay_size=0, normalize_obs=True)
+                 action_space=var_dict['action_space'], train_mode=False, alpha=0.1, replay_size=0, normalize_obs=True)
 
     agent.actor.load_state_dict(torch.load(f"{path}/ddpg_actor", map_location=lambda storage, loc: storage))
     agent.adversary.load_state_dict(torch.load(f"{path}/ddpg_adversary", map_location=lambda storage, loc: storage))
@@ -67,7 +67,7 @@ def load_arrl_sgld_model(path):
     var_dict = torch.load(f"{path}/ddpg_vars")
 
     agent = DDPG_SGLD(beta=var_dict['beta'], epsilon=var_dict['epsilon'], learning_rate=var_dict['learning_rate'], gamma=var_dict['gamma'], 
-                      tau=var_dict['tau'], alpha=0,
+                      tau=var_dict['tau'], alpha=0.1,
                       hidden_size_dim0=var_dict['hidden_size_dim0'], hidden_size_dim1=var_dict['hidden_size_dim1'],
                       num_inputs=var_dict['num_inputs'], action_space=var_dict['action_space'], 
                       train_mode=False, replay_size=0, normalize_obs=True, optimizer=0, two_player=var_dict['two_player'])
@@ -84,7 +84,6 @@ def load_arrl_sgld_model(path):
         agent.obs_rms = None
         agent.normalize_observations = False
 
-    # FIXME was missing return!!!
     return agent
 
 

@@ -275,6 +275,7 @@ if __name__ == "__main__":
     save_model(agent=agent, actor=agent.actor, adversary=agent.adversary, basedir=base_dir, obs_rms=agent.obs_rms, rew_rms=agent.ret_rms)
 
     dir = find_root_dir() + '/datasets'
+    os.makedirs(dir)
     with open(f'{dir}/arrl_sgld_raw_dataset-{args.env_name}-{datetime.datetime.now().strftime("%d%m_%H%M")}.json', 'w') as f:
         json.dump(hacky_store, f, indent=4)
 
