@@ -7,6 +7,7 @@ trained-models*/
 eval-outputs*/
 env-sims*/
 results*/
+final-results*/
 wandb*/
 run-configs-store/
 eval_store/
