@@ -5,13 +5,22 @@ hf_project: 'ARDT-Internal' # personal project, or ARDT-Project, or ARDT-Interna
 eval_type: "agent_adv"  # no_adv, env_adv, agent_adv
 eval_steps: 1000  # 1000 is the default in DT
 eval_target_return: 1600  # note this should depend on environment and steps!! 12k is for halfcheetah and 1000 steps for example
-eval_iters: 50  # ensure robust evaluation
+eval_iters: 30  # ensure robust evaluation
 
-trained_model_names: ['arrl_sgld_v0', 'arrl_sgld_v1', 'arrl_sgld_v2', 'arrl_sgld_v3']
-trained_model_types: ['arrl-sgld', 'arrl-sgld', 'arrl-sgld', 'arrl-sgld']
-trained_model_paths: ['evaluation_protocol/trained-models/arrl-sgld/0', 'evaluation_protocol/trained-models/arrl-sgld/1', 'evaluation_protocol/trained-models/arrl-sgld/2', 'evaluation_protocol/trained-models/arrl-sgld/3']
+trained_model_names: ['arrl_v0', 'arrl_v1', 'arrl_v2', 'arrl_v3']
+trained_model_types: ['arrl', 'arrl', 'arrl', 'arrl']
+trained_model_paths: ['evaluation_protocol/trained-models/arrl/0', 'evaluation_protocol/trained-models/arrl/1', 'evaluation_protocol/trained-models/arrl/2', 'evaluation_protocol/trained-models/arrl/3']
+
+# trained_model_names: ['arrl_sgld_v0', 'arrl_sgld_v1', 'arrl_sgld_v2', 'arrl_sgld_v3']
+# trained_model_types: ['arrl-sgld', 'arrl-sgld', 'arrl-sgld', 'arrl-sgld']
+# trained_model_paths: ['evaluation_protocol/trained-models/arrl-sgld/0', 'evaluation_protocol/trained-models/arrl-sgld/1', 'evaluation_protocol/trained-models/arrl-sgld/2', 'evaluation_protocol/trained-models/arrl-sgld/3']
+
+# # only if using an explicit adversary!! i.e. eval_type = "agent_adv"
+# adv_model_names: ['arrl_v0', 'arrl_v1', 'arrl_v2', 'arrl_v3', 'zeroagent']
+# adv_model_types: ['arrl', 'arrl', 'arrl', 'arrl', 'zeroagent']
+# adv_model_paths: ['evaluation_protocol/trained-models/arrl/0', 'evaluation_protocol/trained-models/arrl/1', 'evaluation_protocol/trained-models/arrl/2', 'evaluation_protocol/trained-models/arrl/3', 'evaluation_protocol/trained-models/zeroagent/model_halfcheetah.json']
 
 # only if using an explicit adversary!! i.e. eval_type = "agent_adv"
-adv_model_names: ['arrl_sgld_v0', 'arrl_sgld_v1', 'arrl_sgld_v2', 'arrl_sgld_v3', 'zeroagent']
-adv_model_types: ['arrl-sgld', 'arrl-sgld', 'arrl-sgld', 'arrl-sgld', 'zeroagent']
-adv_model_paths: ['evaluation_protocol/trained-models/arrl-sgld/0', 'evaluation_protocol/trained-models/arrl-sgld/1', 'evaluation_protocol/trained-models/arrl-sgld/2', 'evaluation_protocol/trained-models/arrl-sgld/3', 'evaluation_protocol/trained-models/zeroagent/model_halfcheetah.json']
+adv_model_names: ['zeroagent']
+adv_model_types: ['zeroagent']
+adv_model_paths: ['evaluation_protocol/trained-models/zeroagent/model_halfcheetah.json']

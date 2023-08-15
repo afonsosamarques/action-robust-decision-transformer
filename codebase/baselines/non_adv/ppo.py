@@ -46,8 +46,9 @@ def set_seed_everywhere(seed, env=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--version', type=int, required=True, help='For model naming purposes.')
-    parser.add_argument('--env_name', type=str, default='halfcheetah', help='Environment name.')
+    parser.add_argument('--env_name', type=str, default='hopper', help='Environment name.')
     parser.add_argument('--train_steps', type=int, default=10**6, help='Total number of steps in training.')
+    parser.add_argument('--train_steps_multiple', type=int, default=1, help='Just an easier way to scale up default train steps.')
     parser.add_argument('--max_ep_len', type=int, default=1000, help='Max steps per episode.')
     parser.add_argument('--eval_trajs', type=int, default=5000, help='Total number of trajectories to collect in evaluation.')
     args = parser.parse_args()
@@ -58,9 +59,10 @@ if __name__ == "__main__":
 
     # train model
     print("Training model...")
+    train_steps = args.train_steps * args.train_steps_multiple
     env = GymWrapperRecorder(gym.make(env_name))
     model = PPO("MlpPolicy", env, verbose=0, device=device, seed=args.version)
-    model.learn(total_timesteps=args.train_steps, progress_bar=True, log_interval=args.train_steps//10)
+    model.learn(total_timesteps=train_steps, progress_bar=True, log_interval=train_steps//10)
     model.save(f"{find_root_dir()}/agents/{model_name}")
     
     # # in case we want to use an already trained model!!
