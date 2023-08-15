@@ -246,7 +246,7 @@ if __name__ == "__main__":
                 'lambda2': params_combination[2],
             }
             train_params = {
-                'train_steps': train_steps if not args.is_test_run else 10,
+                'train_steps': train_steps,
                 'train_batch_size': train_batch_size,
                 'learning_rate': params_combination[3],
                 'weight_decay': params_combination[4],
