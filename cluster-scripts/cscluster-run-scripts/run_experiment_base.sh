@@ -28,7 +28,7 @@ flock -e 200
 unique_script_name=$config_name
 while grep -q "^$unique_script_name:" $result_file; do
   version=$((version + 1))
-  unique_script_name="${script_name}_v${version}"
+  unique_script_name="${unique_script_name}_v${version}"
 done
 
 flock -u 200
