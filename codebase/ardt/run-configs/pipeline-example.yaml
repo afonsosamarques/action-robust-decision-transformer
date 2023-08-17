@@ -1,23 +1,23 @@
 environment_config:
-  env_type: "halfcheetah"  # halfcheetah, hopper, walker2d
+  env_type: "hopper"  # halfcheetah, hopper, walker2d
   max_ep_len: 1000  # limit episode length for offline dataset
   max_ep_return: 12000  # max "possible" returns per episode of size max_ep_len
   returns_scale: 1000  # scale returns, 1000 to match original DT implementation
 
 dataset_config:
-  is_local: [true, true]  # true, false, whether it is stored locally or up on HF - a list
-  online_policy_names: ["arrl_nrmdp", "ppo"]  # d4rl, rarl, arrl_nrdmp, arrl_prmdp, dataset_combo, etc. - a list
-  dataset_types: ["train", "test"]  # train, test, expert - a list
-  dataset_versions: ["", ""]  # fill only if there is any type of versioning to the dataset being considered, otherwise insert empty strings - a list
+  is_local: [true]  # true, false, whether it is stored locally or up on HF - a list
+  online_policy_names: ["arrl"]  # d4rl, rarl, arrl_nrdmp, arrl_prmdp, dataset_combo, etc. - a list
+  dataset_types: ["train"]  # train, test, expert - a list
+  dataset_versions: ["v1"]  # fill only if there is any type of versioning to the dataset being considered, otherwise insert empty strings - a list
 
 model_config:
   agent_type: "ardt-full"  # dt, ardt-simplest, ardt-vanilla, ardt-full
   context_size: [20]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
-  lambda1: [5]  # these are for different parameter combinations to try!!
-  lambda2: [500]  # these are for different parameter combinations to try!!
+  lambda1: [1.0]  # these are for different parameter combinations to try!!
+  lambda2: [250]  # these are for different parameter combinations to try!!
 
 training_config:
-  train_steps: 3  # 6 => 10**6
+  train_steps: 2  # 6 => 10**6
   train_batch_size: 64  # 32/64
   learning_rate: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   weight_decay: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
@@ -34,8 +34,8 @@ evaluation_config:
   adv_model_types: []  # dt, ardt-simplest, ardt-vanilla, ardt-full
 
 admin_config:
-  wandb_project: "Experiment-1"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
-  hf_project: "Experiment-1"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
+  wandb_project: "afonsosamarques"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
+  hf_project: "afonsosamarques"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
   run_type: "test"  # "core", "pipeline", or "test"
   is_verbose: false  # whether to print anything at all
   print_tracebacks: false  # whether to print tracebacks of errors
