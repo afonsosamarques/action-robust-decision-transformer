@@ -11,6 +11,7 @@ def set_seed_everywhere(seed, env=None):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.mps.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
     if env is not None:
         env.seed = seed
         env.action_space.seed = seed

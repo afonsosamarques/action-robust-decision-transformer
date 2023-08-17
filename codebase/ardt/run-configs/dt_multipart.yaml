@@ -14,15 +14,15 @@ model_config:
   context_size: [20]  # size of context window (we do +1 for multipart)
 
 training_config:
-  train_steps: 2  # 6 => 10**6
-  warmup_steps: [1]  # 4 => 10**4
+  train_steps: 4  # 6 => 10**6
+  warmup_steps: [3]  # 4 => 10**4
   train_batch_size: [64]  # 32/64
   learning_rate: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   weight_decay: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   max_grad_norm: [0.25]  # these are for different parameter combinations to try!! | original: 0.25
-  seeds: [33]  # to train multiple models with different initialisations
+  seeds: [13]  # to train multiple models with different initialisations
 
 admin_config:
   wandb_project: "afonsosamarques"  # project name
   hf_project: "afonsosamarques"  # project name
-  run_type: "test"  # "core", "pipeline", or "test"
+  run_type: "core"  # "core", "pipeline", or "test"

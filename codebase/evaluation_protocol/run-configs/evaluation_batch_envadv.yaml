@@ -2,7 +2,7 @@ env_type: "halfcheetah"  # halfcheetah, hopper, walker2d
 run_type: "pipeline"  # "core", "pipeline", or "test"
 hf_project: 'ARDT-Internal' # personal project, or ARDT-Project, or ARDT-Internal
 
-eval_type: "batch_agent_adv"  # no_adv, env_adv, agent_adv, batch_agent_adv, batch_noadv
+eval_type: "batch_env_adv"  # no_adv, env_adv, agent_adv, batch_agent_adv, batch_noadv
 eval_steps: 1000  # 1000 is the default in DT
 eval_target_return: 2000  # note this should depend on environment and steps!! 12k is for halfcheetah and 1000 steps for example
 eval_iters: 256  # ensure robust evaluation
@@ -12,7 +12,7 @@ trained_model_names: ['ardt-full-dataset_combo_train_halfcheetah_v1-1808_1655', 
 trained_model_types: ['ardt-multipart', 'ardt-multipart']
 trained_model_paths: ['hf', 'hf']
 
-# always required
-adv_model_names: ['zeroagent', 'randagent', 'ardt-simplest-dataset_combo_train_halfcheetah_v1-1808_0239']
-adv_model_types: ['zeroagent', 'randagent', 'ardt-vanilla']
-adv_model_paths: ['evaluation_protocol/trained-models/zeroagent/model_halfcheetah.json', 'evaluation_protocol/trained-models/randagent/model_halfcheetah.json', 'hf']
+# never required
+adv_model_names: []  
+adv_model_types: []  
+adv_model_paths: [] 

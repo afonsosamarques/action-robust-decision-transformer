@@ -1,9 +1,9 @@
 #$ -S /bin/bash
 
-#$ -N ardt-full
+#$ -N ardt_vanilla_flag
 #$ -l gpu=True
 #$ -l tmem=20G
-#$ -l h_rt=24:00:00
+#$ -l h_rt=8:00:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 
@@ -15,7 +15,7 @@ source /home/amarques/envs/ardt-env/bin/activate
 version=0
 result_file="results.txt"
 lock_file="results.lock"
-config_name="ardt-full"
+config_name="ardt_vanilla_flag"
 
 # create the files, if necessary
 touch $result_file
@@ -36,7 +36,7 @@ exec 200>&-
 
 # run the code
 nvidia-smi
-python3 -m ardt.pipeline --config_name $config_name
+python3 -m ardt.pipeline --config_name $config_name --flag
 result=$?
 
 # check the result and write to the file

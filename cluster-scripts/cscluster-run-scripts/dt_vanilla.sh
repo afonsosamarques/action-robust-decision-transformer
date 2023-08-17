@@ -1,9 +1,9 @@
 #$ -S /bin/bash
 
-#$ -N ardt-full
+#$ -N dt_vanilla
 #$ -l gpu=True
 #$ -l tmem=20G
-#$ -l h_rt=24:00:00
+#$ -l h_rt=8:00:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 
@@ -15,7 +15,7 @@ source /home/amarques/envs/ardt-env/bin/activate
 version=0
 result_file="results.txt"
 lock_file="results.lock"
-config_name="ardt-full"
+config_name="dt_vanilla"
 
 # create the files, if necessary
 touch $result_file

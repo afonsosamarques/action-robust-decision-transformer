@@ -4,7 +4,6 @@ import os
 import gymnasium as gym
 import numpy as np
 import torch
-import warnings
 
 from collections import defaultdict
 from requests.exceptions import HTTPError
@@ -16,19 +15,19 @@ from .helpers import set_seed_everywhere, find_root_dir, scrappy_print_eval_dict
 def sample_env_params(env):
     mb = env.model.body_mass
     mb = torch.tensor(mb)
-    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.25)
+    gauss = torch.distributions.Normal(mb, torch.ones_like(mb) * 0.5)
     mb = gauss.sample()
     env.model.body_mass = np.array(mb)
     
-    mb = env.model.opt.gravity
-    mb = torch.tensor(mb)
-    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.25)
-    mb = gauss.sample()
-    env.model.opt.gravity = np.array(mb)
+    # mb = env.model.opt.gravity
+    # mb = torch.tensor(mb)
+    # gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.25)
+    # mb = gauss.sample()
+    # env.model.opt.gravity = np.array(mb)
 
     mb = env.model.geom_friction
     mb = torch.tensor(mb)
-    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.05)
+    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.1)
     mb = gauss.sample()
     env.model.geom_friction = np.array(mb)
 
@@ -51,9 +50,6 @@ def evaluate(
         hf_project=None,
         device=torch.device('cpu'),
     ):
-    # linked to mujoco exception explained below
-    warnings.filterwarnings('error')
-
     # load model
     try:
         model, is_adv_model = load_model(model_type, model_name, model_path=(model_path if model_path is not None else hf_project + f"/{model_name}"))
@@ -76,70 +72,48 @@ def evaluate(
         if n_runs >= eval_iters:
             break
         
-        try:
-            with torch.no_grad():
-                # set up environment for run
-                env = gym.make(env_name)
-                set_seed_everywhere(run_idx, env)
-                if is_adv_eval:
-                    env = sample_env_params(env)
-                    print(f"Starting episode {run_idx}. Checking that sampling worked. Gravity: ", env.model.opt.gravity)
-                else:
-                    print(f"Starting episode {run_idx}.")
+        with torch.no_grad():
+            # set up environment for run
+            env = gym.make(env_name)
+            set_seed_everywhere(run_idx, env)
+            if is_adv_eval:
+                env = sample_env_params(env)
+                print(f"Starting episode {run_idx}. Checking that sampling worked. Body mass: ", env.model.body_mass)
+            else:
+                print(f"Starting episode {run_idx}.")
 
-                # set up episode variables
-                episode_return, episode_length = 0, 0
-                
-                # reset environment
-                state, _ = env.reset()
-                model.new_eval(start_state=state, eval_target=eval_target)
+            # set up episode variables
+            episode_return, episode_length = 0, 0
+            
+            # reset environment
+            state, _ = env.reset()
+            model.new_eval(start_state=state, eval_target=eval_target)
 
-                # run episode
-                for t in range(env_steps):
-                    pr_action, adv_action = model.get_action(state=state)
-                    state, reward, done, trunc, _ = env.step(pr_action.squeeze())
-                    model.update_history(
-                        pr_action=pr_action, 
-                        adv_action=adv_action, 
-                        state=state, 
-                        reward=reward,
-                        timestep=t
-                    )
-                    episode_return += reward
-                    episode_length += 1
+            # run episode
+            for t in range(env_steps):
+                pr_action, adv_action = model.get_action(state=state)
+                state, reward, done, trunc, _ = env.step(pr_action.squeeze())
+                model.update_history(
+                    pr_action=pr_action, 
+                    adv_action=adv_action, 
+                    state=state, 
+                    reward=reward,
+                    timestep=t
+                )
+                episode_return += reward
+                episode_length += 1
 
-                    # finish and log episode
-                    if done or trunc or t == env_steps - 1:
-                        n_runs += 1
-                        eval_dict['iter'].append(run_idx)
-                        eval_dict['env_seed'].append(run_idx)
-                        eval_dict['init_target_return'].append(eval_target)
-                        eval_dict['ep_length'].append(episode_length)
-                        eval_dict['ep_return'].append(episode_return)
-                        run_fails = 0
-                        break
-        
-        # when mujoco throws a warning about environment instability
-        except Warning as w:
-            run_fails += 1
-            if run_fails > 3:
-                # workaround to deal with the fact that the environment sometimes crashes
-                # and I can't seem to be able to use MujocoException to catch it
-                print("Too many consecutive failed runs. Stopping evaluation.")
-                raise w
-            print(f"Run {run_idx} failed with warning {w}")
-            continue
-    
-        # when mujoco throws an error about environment instability
-        except Exception as e:
-            run_fails += 1
-            if run_fails > 3:
-                # workaround to deal with the fact that the environment sometimes crashes
-                # and I can't seem to be able to use MujocoException to catch it
-                print("Too many consecutive failed runs. Stopping evaluation.")
-                raise e
-            print(f"Run {run_idx} failed with error {e}")
-            continue
+                # finish and log episode
+                if done or trunc or t == env_steps - 1:
+                    n_runs += 1
+                    eval_dict['iter'].append(run_idx)
+                    eval_dict['env_seed'].append(run_idx)
+                    eval_dict['init_target_return'].append(eval_target)
+                    eval_dict['ep_length'].append(episode_length)
+                    eval_dict['ep_return'].append(episode_return)
+                    run_fails = 0
+                    break
+
     
     # show some simple statistics
     if verbose:
@@ -152,5 +126,3 @@ def evaluate(
     with open(f"{dir_path}/{('env-adv' if is_adv_eval else 'no-adv')}.json", 'w') as f:
         json.dump(eval_dict, f)
 
-    # cleanup admin
-    warnings.resetwarnings()

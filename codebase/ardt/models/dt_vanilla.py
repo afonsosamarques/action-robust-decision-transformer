@@ -3,10 +3,10 @@ import torch
 
 from transformers import DecisionTransformerModel
 
-from .ardt_utils import DTEvalWrapper
+from .model_utils import DTEvalWrapper
 
 
-class TrainableDT(DecisionTransformerModel):
+class VanillaDT(DecisionTransformerModel):
     def __init__(self, config, logger=None):
         super().__init__(config)
         self.logger = logger
@@ -20,6 +20,8 @@ class TrainableDT(DecisionTransformerModel):
             new_kwargs.pop("adv_actions")
             new_kwargs.pop("pr_actions_filtered")
             new_kwargs.pop("adv_actions_filtered")
+            new_kwargs.pop("next_returns_to_go")
+            new_kwargs.pop("next_returns_to_go_scaled")
         
         if is_train:
             # add the DT loss; applied only to non-padding values in action head

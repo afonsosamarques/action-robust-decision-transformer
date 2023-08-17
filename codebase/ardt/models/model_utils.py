@@ -15,6 +15,7 @@ class DecisionTransformerOutput(ModelOutput):
     pr_action_preds: torch.FloatTensor = None
     adv_action_pred: torch.FloatTensor = None
     return_preds: torch.FloatTensor = None
+    next_returns_preds: torch.FloatTensor = None
     hidden_states: torch.FloatTensor = None
     attentions: torch.FloatTensor = None
     last_hidden_state: torch.FloatTensor = None
@@ -35,7 +36,8 @@ class DecisionTransformerGymDataCollator:
     p_sample: np.array = None  # a distribution weighing episodes by trajectory lengths
     n_traj: int = 0  # to store the number of trajectories in the dataset
     
-    def __init__(self, dataset, context_size, returns_scale):
+    def __init__(self, dataset, context_size, returns_scale, is_multipart):
+        self.is_multipart = is_multipart
         # process dataset: add returns to go
         compute_rtg = lambda ds: {'returns_to_go': np.cumsum(ds["rewards"][::-1])[::-1]}
         dataset = dataset.map(compute_rtg)
@@ -85,43 +87,75 @@ class DecisionTransformerGymDataCollator:
 
         # a batch of dataset features
         s, a_pr, a_pr_fltd, a_adv, a_adv_fltd, r, d, rtg, rtg_scaled, tsteps, mask = [], [], [], [], [], [], [], [], [], [], []
+        next_rtg = []
+        next_rtg_scaled = []
         
         for idx in batch_idx:
             traj = self.dataset[int(idx)]
 
-            # see if dataset is mixed and trajectory is adversarial, if so get shift
-            shifts = np.zeros_like(traj['returns_to_go'])
-            if self.is_mixed and not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions'])):
-                returns_to_go = np.array(traj['returns_to_go'])
-                ret_percents = (returns_to_go - self.min_ep_adv_return) / (self.max_ep_adv_return - self.min_ep_adv_return)
-                assert np.all(ret_percents <= 1.0) and np.all(ret_percents >= 0.0), "Return percentage needs to be between 0 and 1."
-                scaled_rtgs = ret_percents * (self.max_ep_return - self.min_ep_return) + self.min_ep_return
-                shifts = scaled_rtgs - returns_to_go
+            # # see if dataset is mixed and trajectory is adversarial, if so get shift
+            # shifts = np.zeros_like(traj['returns_to_go'])
+            # if self.is_mixed and not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions'])):
+            #     returns_to_go = np.array(traj['returns_to_go'])
+            #     ret_percents = (returns_to_go - self.min_ep_adv_return) / (self.max_ep_adv_return - self.min_ep_adv_return)
+            #     assert np.all(ret_percents <= 1.0) and np.all(ret_percents >= 0.0), "Return percentage needs to be between 0 and 1."
+            #     scaled_rtgs = ret_percents * (self.max_ep_return - self.min_ep_return) + self.min_ep_return
+            #     shifts = scaled_rtgs - returns_to_go
 
             # get sequences from the dataset
-            start = random.randint(0, len(traj["rewards"]) - 1)
-            s.append(np.array(traj["observations"][start : start + self.context_size]).reshape(1, -1, self.state_dim))
-            pr_actions = np.array(traj["pr_actions"][start : start + self.context_size]).reshape(1, -1, self.pr_act_dim)
-            a_pr.append(pr_actions)
-            pr_actions_filtered = pr_actions.copy()
-            pr_actions_filtered[:, -1, :] = np.zeros_like(pr_actions_filtered[:, -1, :])
-            a_pr_fltd.append(pr_actions_filtered)
-            adv_actions = np.array(traj["adv_actions"][start : start + self.context_size]).reshape(1, -1, self.adv_act_dim)
-            a_adv.append(adv_actions)
-            adv_actions_filtered = adv_actions.copy()
-            adv_actions_filtered[:, -1, :] = np.zeros_like(adv_actions_filtered[:, -1, :])
-            a_adv_fltd.append(adv_actions_filtered)        
-            r.append(np.array(traj["rewards"][start : start + self.context_size]).reshape(1, -1, 1))
-            rtg.append(np.array(traj["returns_to_go"][start : start + self.context_size]).reshape(1, -1, 1))
-            rtg_scaled.append((np.array(traj["returns_to_go"][start : start + self.context_size]) + np.array(shifts[start : start + self.context_size])).reshape(1, -1, 1))
-            d.append(np.array(traj["dones"][start : start + self.context_size]).reshape(1, -1))
-            tsteps.append(np.arange(start, start + s[-1].shape[1]).reshape(1, -1))
-            tsteps[-1][tsteps[-1] >= self.max_ep_len] = self.max_ep_len - 1  # padding cutoff
+            if self.is_multipart:
+                start = random.randint(0, len(traj["rewards"]) - 3)
+                end = min(start + self.context_size - 1, len(traj["rewards"]) - 2)
+
+                s.append(np.array(traj["observations"][start : end]).reshape(1, -1, self.state_dim))
+                pr_actions = np.array(traj["pr_actions"][start : end]).reshape(1, -1, self.pr_act_dim)
+                a_pr.append(pr_actions)
+                pr_actions_filtered = pr_actions.copy()
+                pr_actions_filtered[:, -1, :] = np.zeros_like(pr_actions_filtered[:, -1, :])
+                a_pr_fltd.append(pr_actions_filtered)
+                adv_actions = np.array(traj["adv_actions"][start : end]).reshape(1, -1, self.adv_act_dim)
+                a_adv.append(adv_actions)
+                adv_actions_filtered = adv_actions.copy()
+                adv_actions_filtered[:, -1, :] = np.zeros_like(adv_actions_filtered[:, -1, :])
+                a_adv_fltd.append(adv_actions_filtered)        
+                r.append(np.array(traj["rewards"][start : end]).reshape(1, -1, 1))
+                rtg.append(np.array(traj["returns_to_go"][start : end]).reshape(1, -1, 1))
+                next_rtg.append(np.array(traj["returns_to_go"][end + 1]).reshape(1, 1, 1))
+                rtg_scaled = rtg.copy()
+                next_rtg_scaled = next_rtg.copy()
+                # rtg_scaled.append((np.array(traj["returns_to_go"][start : end]) + np.array(shifts[start : end])).reshape(1, -1, 1))
+                # next_rtg_scaled.append(np.array(traj["returns_to_go"][end + 1] + shifts[end + 1]).reshape(1, 1, 1))
+                d.append(np.array(traj["dones"][start : end]).reshape(1, -1))
+                tsteps.append(np.arange(start, start + s[-1].shape[1]).reshape(1, -1))
+                tsteps[-1][tsteps[-1] >= self.max_ep_len] = self.max_ep_len - 1  # padding cutoff
+            else:
+                start = random.randint(0, len(traj["rewards"]) - 1)
+
+                s.append(np.array(traj["observations"][start : start + self.context_size]).reshape(1, -1, self.state_dim))
+                pr_actions = np.array(traj["pr_actions"][start : start + self.context_size]).reshape(1, -1, self.pr_act_dim)
+                a_pr.append(pr_actions)
+                pr_actions_filtered = pr_actions.copy()
+                pr_actions_filtered[:, -1, :] = np.zeros_like(pr_actions_filtered[:, -1, :])
+                a_pr_fltd.append(pr_actions_filtered)
+                adv_actions = np.array(traj["adv_actions"][start : start + self.context_size]).reshape(1, -1, self.adv_act_dim)
+                a_adv.append(adv_actions)
+                adv_actions_filtered = adv_actions.copy()
+                adv_actions_filtered[:, -1, :] = np.zeros_like(adv_actions_filtered[:, -1, :])
+                a_adv_fltd.append(adv_actions_filtered)        
+                r.append(np.array(traj["rewards"][start : start + self.context_size]).reshape(1, -1, 1))
+                rtg.append(np.array(traj["returns_to_go"][start : start + self.context_size]).reshape(1, -1, 1))
+                next_rtg.append(np.array(traj["returns_to_go"][len(traj["returns_to_go"]) - 1]).reshape(1, 1, 1))
+                rtg_scaled = rtg.copy()
+                next_rtg_scaled = next_rtg.copy()
+                # rtg_scaled.append((np.array(traj["returns_to_go"][start : start + self.context_size]) + np.array(shifts[start : start + self.context_size])).reshape(1, -1, 1))
+                d.append(np.array(traj["dones"][start : start + self.context_size]).reshape(1, -1))
+                tsteps.append(np.arange(start, start + s[-1].shape[1]).reshape(1, -1))
+                tsteps[-1][tsteps[-1] >= self.max_ep_len] = self.max_ep_len - 1  # padding cutoff
 
             # normalising and padding; we pad with zeros to the left of the sequence
             # except for actions, where we need to pad with some negative number well outside of domain
             tlen = s[-1].shape[1]
-            padlen = self.context_size - tlen
+            padlen = self.context_size - 1 - tlen if self.is_multipart else self.context_size - tlen
             
             s[-1] = (s[-1] - self.state_mean) / self.state_std
             s[-1] = np.concatenate(
@@ -157,10 +191,14 @@ class DecisionTransformerGymDataCollator:
                 [np.zeros((1, padlen, 1)) * 1.0, rtg[-1]], axis=1,
             )
 
+            next_rtg[-1] /= self.returns_scale
+
             rtg_scaled[-1] /= self.returns_scale
             rtg_scaled[-1] = np.concatenate(
                 [np.zeros((1, padlen, 1)) * 1.0, rtg_scaled[-1]], axis=1,
             ) 
+
+            next_rtg_scaled[-1] /= self.returns_scale
 
             tsteps[-1] = np.concatenate([np.zeros((1, padlen)), tsteps[-1]], axis=1)
 
@@ -176,7 +214,9 @@ class DecisionTransformerGymDataCollator:
         r = torch.from_numpy(np.concatenate(r, axis=0)).float()
         d = torch.from_numpy(np.concatenate(d, axis=0))
         rtg = torch.from_numpy(np.concatenate(rtg, axis=0)).float()
+        next_rtg = torch.from_numpy(np.concatenate(next_rtg, axis=0)).float()
         rtg_scaled = torch.from_numpy(np.concatenate(rtg_scaled, axis=0)).float()
+        next_rtg_scaled = torch.from_numpy(np.concatenate(next_rtg_scaled, axis=0)).float()
         tsteps = torch.from_numpy(np.concatenate(tsteps, axis=0)).long()
         mask = torch.from_numpy(np.concatenate(mask, axis=0)).float()
 
@@ -188,7 +228,9 @@ class DecisionTransformerGymDataCollator:
             "adv_actions_filtered": a_adv_fltd,
             "rewards": r,
             "returns_to_go": rtg,
+            "next_returns_to_go": next_rtg,
             "returns_to_go_scaled": rtg_scaled,
+            "next_returns_to_go_scaled": next_rtg_scaled,
             "timesteps": tsteps,
             "attention_mask": mask,
         }

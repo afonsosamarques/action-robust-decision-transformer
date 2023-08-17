@@ -11,6 +11,7 @@ from huggingface_hub import login
 from .evaluate_envadv import evaluate as evaluate_envadv
 from .evaluate_agentadv import evaluate as evaluate_agentadv
 from .evaluate_batch_agentadv import evaluate as evaluate_batch_agentadv
+from .evaluate_batch_envadv import evaluate as evaluate_batch_envadv
 from .config_utils import check_evalrun_config, load_run_suffix, load_env_name
 from .helpers import find_root_dir
 
@@ -132,6 +133,23 @@ def launch_evaluation(
             verbose=verbose,
             hf_project=hf_project,
             device=device,
+        )
+    elif eval_type == 'batch_env_adv':
+        return evaluate_batch_envadv(
+            model_name=pr_model_name,
+            model_type=pr_model_type,
+            env_name=env_name,
+            env_type=env_type,
+            env_steps=env_steps,
+            eval_iters=eval_iters,
+            eval_target=eval_target,
+            is_adv_eval=True,
+            run_suffix=run_suffix,
+            record_data=record_data,
+            verbose=verbose,
+            model_path=model_path,
+            hf_project=hf_project,
+            device=device
         )
     
 

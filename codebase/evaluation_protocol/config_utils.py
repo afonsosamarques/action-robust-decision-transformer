@@ -1,4 +1,3 @@
-import datetime
 import json
 
 import torch
@@ -6,10 +5,11 @@ import torch
 from pydantic import BaseModel, Field
 from transformers import DecisionTransformerConfig
 
-from ardt.models.ardt_simplest import SimpleRobustDT
-from ardt.models.ardt_vanilla import SingleAgentRobustDT
-from ardt.models.ardt_full import TwoAgentRobustDT
-from ardt.models.trainable_dt import TrainableDT
+from ardt.models.dt_vanilla import VanillaDT
+from ardt.models.dt_multipart import MultipartDT
+from ardt.models.ardt_vanilla import AdversarialDT
+from ardt.models.ardt_multipart import MultipartADT
+
 from baselines.arrl.ddpg import DDPG
 from baselines.arrl_sgld.ddpg import DDPG as DDPG_SGLD
 from stable_baselines3 import PPO
@@ -90,19 +90,19 @@ def load_arrl_sgld_model(path):
 def load_model(model_type, model_to_use, model_path):
     if model_type == "dt":
         config = DecisionTransformerConfig.from_pretrained(model_path)
-        model = TrainableDT(config)
+        model = VanillaDT(config)
         return model.from_pretrained(model_path), False
-    elif model_type == "ardt-simplest" or model_type == "ardt_simplest":
+    elif model_type == "dt-multipart" or model_type == "dt_multipart":
         config = DecisionTransformerConfig.from_pretrained(model_path)
-        model = SimpleRobustDT(config)
-        return model.from_pretrained(model_path), True
+        model = MultipartDT(config)
+        return model.from_pretrained(model_path), False
     elif model_type == "ardt-vanilla" or model_type == "ardt_vanilla":
         config = DecisionTransformerConfig.from_pretrained(model_path)
-        model = SingleAgentRobustDT(config)
+        model = AdversarialDT(config)
         return model.from_pretrained(model_path), True
-    elif model_type == "ardt-full" or model_type == "ardt_full":
+    elif model_type == "ardt-multipart" or model_type == "ardt_multipart":
         config = DecisionTransformerConfig.from_pretrained(model_path)
-        model = TwoAgentRobustDT(config)
+        model = MultipartADT(config)
         return model.from_pretrained(model_path), True
     elif model_type == "arrl":
         return load_arrl_model(model_path), True
@@ -134,11 +134,6 @@ def load_model(model_type, model_to_use, model_path):
         raise Exception(f"Model {model_to_use} of type {model_type} not available.")
 
 
-def build_model_name(model_type, env_type, dataset_name):
-    datetime_encoding = datetime.datetime.now().strftime("%d%m_%H%M")
-    return f"{model_type}-{env_type}-{dataset_name}-{datetime_encoding}"
-
-
 ##########################################################################
 class EvaluationRunConfig(BaseModel):
     env_type: str = Field(...)
@@ -158,12 +153,12 @@ class EvaluationRunConfig(BaseModel):
 
 def check_evalrun_config(config):
     config = EvaluationRunConfig(**config)
-    assert config.eval_type in ['no_adv', 'env_adv', 'agent_adv', 'batch_noadv', 'batch_agent_adv'], "Evaluation type needs to be either 'no_adv', 'env_adv', 'agent_adv', 'batch_noadv' or 'batch_adv'."
+    assert config.eval_type in ['no_adv', 'env_adv', 'agent_adv', 'batch_noadv', 'batch_agent_adv', 'batch_env_adv'], "Evaluation type needs to be either 'no_adv', 'env_adv', 'agent_adv', 'batch_noadv' or 'batch_adv' or 'batch_env_adv'."
     assert len(config.trained_model_names) == len(config.trained_model_types), "There need to be as many model names as model types."
     if config.eval_type == 'agent_adv':
         assert len(config.adv_model_names) > 0, "There need to be at least one adversarial model."
         assert len(config.adv_model_names) == len(config.adv_model_types), "There need to be as many adversarial model names as adversarial model types."
-    assert all([mt in ['dt', 'ardt-simplest', 'ardt_simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'arrl-sgld', 'ppo', 'trpo', 'random', 'randagent', 'zeroagent'] for mt in config.trained_model_types]), "Model type needs to be either 'dt', 'ardt-simplest', 'ardt-simplest', 'ardt-vanilla', 'ardt_vanilla', 'ardt-full', 'ardt_full', 'arrl', 'arrl-sgld', 'ppo', 'trpo', 'random' or 'randagent'."
+    assert all([mt in ['dt', 'dt-multipart', 'dt_multipart', 'ardt-vanilla', 'ardt_vanilla', 'ardt-multipart', 'ardt_multipart', 'arrl', 'arrl-sgld', 'ppo', 'trpo', 'random', 'randagent', 'zeroagent'] for mt in config.trained_model_types]), "Model type needs to be either 'dt', 'dt-multipart', 'dt_multipart', 'ardt-vanilla', 'ardt_vanilla', 'ardt-multipart', 'ardt_multipart', 'arrl', 'arrl-sgld', 'ppo', 'trpo', 'random', 'randagent' or 'zeroagent'."
     assert config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
     assert config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
     return config

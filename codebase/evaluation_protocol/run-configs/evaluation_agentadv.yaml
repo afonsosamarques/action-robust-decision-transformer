@@ -7,20 +7,12 @@ eval_steps: 1000  # 1000 is the default in DT
 eval_target_return: 1600  # note this should depend on environment and steps!! 12k is for halfcheetah and 1000 steps for example
 eval_iters: 30  # ensure robust evaluation
 
-trained_model_names: ['arrl_v0', 'arrl_v1', 'arrl_v2', 'arrl_v3']
-trained_model_types: ['arrl', 'arrl', 'arrl', 'arrl']
-trained_model_paths: ['evaluation_protocol/trained-models/arrl/0', 'evaluation_protocol/trained-models/arrl/1', 'evaluation_protocol/trained-models/arrl/2', 'evaluation_protocol/trained-models/arrl/3']
+# always required
+trained_model_names: ['arrl_sgld_v0', 'arrl_sgld_v1', 'arrl_sgld_v2', 'arrl_sgld_v3']
+trained_model_types: ['arrl-sgld', 'arrl-sgld', 'arrl-sgld', 'arrl-sgld']
+trained_model_paths: ['evaluation_protocol/trained-models/arrl-sgld/0', 'evaluation_protocol/trained-models/arrl-sgld/1', 'evaluation_protocol/trained-models/arrl-sgld/2', 'evaluation_protocol/trained-models/arrl-sgld/3']
 
-# trained_model_names: ['arrl_sgld_v0', 'arrl_sgld_v1', 'arrl_sgld_v2', 'arrl_sgld_v3']
-# trained_model_types: ['arrl-sgld', 'arrl-sgld', 'arrl-sgld', 'arrl-sgld']
-# trained_model_paths: ['evaluation_protocol/trained-models/arrl-sgld/0', 'evaluation_protocol/trained-models/arrl-sgld/1', 'evaluation_protocol/trained-models/arrl-sgld/2', 'evaluation_protocol/trained-models/arrl-sgld/3']
-
-# # only if using an explicit adversary!! i.e. eval_type = "agent_adv"
-# adv_model_names: ['arrl_v0', 'arrl_v1', 'arrl_v2', 'arrl_v3', 'zeroagent']
-# adv_model_types: ['arrl', 'arrl', 'arrl', 'arrl', 'zeroagent']
-# adv_model_paths: ['evaluation_protocol/trained-models/arrl/0', 'evaluation_protocol/trained-models/arrl/1', 'evaluation_protocol/trained-models/arrl/2', 'evaluation_protocol/trained-models/arrl/3', 'evaluation_protocol/trained-models/zeroagent/model_halfcheetah.json']
-
-# only if using an explicit adversary!! i.e. eval_type = "agent_adv"
-adv_model_names: ['zeroagent']
-adv_model_types: ['zeroagent']
-adv_model_paths: ['evaluation_protocol/trained-models/zeroagent/model_halfcheetah.json']
+# always required
+adv_model_names: ['arrl_v0', 'arrl_v1', 'arrl_v2', 'arrl_v3', 'zeroagent']
+adv_model_types: ['arrl', 'arrl', 'arrl', 'arrl', 'zeroagent']
+adv_model_paths: ['evaluation_protocol/trained-models/arrl/0', 'evaluation_protocol/trained-models/arrl/1', 'evaluation_protocol/trained-models/arrl/2', 'evaluation_protocol/trained-models/arrl/3', 'evaluation_protocol/trained-models/zeroagent/model_halfcheetah.json']
