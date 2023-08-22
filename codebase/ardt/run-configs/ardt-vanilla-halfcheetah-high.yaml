@@ -4,7 +4,7 @@ environment_config:
   returns_scale: 1000
 
 dataset_config:
-  is_local: [true]
+  is_local: [true, true]
   online_policy_names: ["arrl", "arrl_sgld"]
   dataset_types: ["train", "train"]
   dataset_versions: ["high", "high"]
@@ -12,6 +12,8 @@ dataset_config:
 model_config:
   agent_type: "ardt-vanilla"
   context_size: [20]
+  lambda1: [1.0]
+  lambda2: [1.0]
 
 training_config:
   train_steps: 4

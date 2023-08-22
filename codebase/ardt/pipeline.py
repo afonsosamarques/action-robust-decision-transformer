@@ -78,6 +78,7 @@ def train(
     )
 
     # here we define the training protocol
+    wandb_start = False
     for _ in range(10):
         # NOTE have to wait for as long as it takes, because cluster connection is a problem
         try:
@@ -90,6 +91,7 @@ def train(
                 dir=f"{find_root_dir()}",
                 settings=wandb.Settings(_service_wait=120)
             )
+            wandb_start = True
             break
         except Exception:
             continue
@@ -114,11 +116,11 @@ def train(
         logging_steps=0.05,
         save_strategy="steps",
         save_steps=0.2,
-        report_to="wandb",
+        report_to=("wandb" if not is_offline_log else "none"),
         skip_memory_metrics=True,
         run_name=model_name,
         hub_model_id=hub_model_id,
-        push_to_hub=True,
+        push_to_hub=(not is_offline_log),
     )
 
     # set up and start training
@@ -140,8 +142,9 @@ def train(
     trainer.train()
     trainer.save_model()
     logger.report_all()
-    wandb.config.update(logger.report_all(save=False))
-    wandb.finish()
+    if wandb_start:
+        wandb.config.update(logger.report_all(save=False))
+        wandb.finish()
 
     print(f"\n\nExiting at {datetime.datetime.now()}.\n")
     print("================================================\n")
@@ -245,8 +248,8 @@ if __name__ == "__main__":
         for params_combination in params_combinations:
             model_params = {
                 'context_size': params_combination[0],
-                'lambda1': 1,
-                'lambda2': 1,
+                'lambda1': params_combination[1],
+                'lambda2': params_combination[2],
             }
             train_params = {
                 'train_steps': train_steps,
@@ -262,7 +265,7 @@ if __name__ == "__main__":
             agent_type = model_config.agent_type
             env_type = env_config.env_type
             chosen_agent, is_multipart = load_agent(agent_type)
-            model_name = build_model_name(agent_type, dataset_name, seed=params_combination[6])
+            model_name = build_model_name(agent_type, dataset_name, seed=params_combination[8])
             if is_multipart:
                 model_params['context_size'] += 1
             
