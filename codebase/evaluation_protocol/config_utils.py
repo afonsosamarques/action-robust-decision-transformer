@@ -103,7 +103,7 @@ def load_model(model_type, model_to_use, model_path):
     elif model_type == "ardt-multipart" or model_type == "ardt_multipart":
         config = DecisionTransformerConfig.from_pretrained(model_path)
         model = MultipartADT(config)
-        return model.from_pretrained(model_path), True
+        return model.from_pretrained(model_path), False
     elif model_type == "arrl":
         return load_arrl_model(model_path), True
     elif model_type == "arrl-sgld":

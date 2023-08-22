@@ -42,7 +42,7 @@ def load_agent(agent_type):
     elif agent_type == "ardt-vanilla" or agent_type == "ardt_vanilla":
         return AdversarialDT, False
     elif agent_type == "ardt-multipart" or agent_type == "ardt_multipart":
-        return MultipartADT, True
+        return MultipartADT, False
     else:
         raise Exception(f"Agent type {agent_type} not available.")
 
