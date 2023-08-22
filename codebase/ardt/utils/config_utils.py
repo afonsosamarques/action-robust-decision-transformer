@@ -76,8 +76,8 @@ class DatasetConfig(BaseModel):
 class ModelConfig(BaseModel):
     agent_type: str = Field(...)
     context_size: list[int] = Field(...)
-    # lambda1: list[float] = Field(...)
-    # lambda2: list[float] = Field(...)
+    lambda1: list[float] = Field(...)
+    lambda2: list[float] = Field(...)
     
 
 class TrainingConfig(BaseModel):
@@ -121,10 +121,10 @@ def check_pipelinerun_config(config, do_checks=True):
     })
     if do_checks:
         assert pipeline_config.environment_config.env_type in ['halfcheetah', 'hopper', 'walker2d'], "Environment name needs to be either 'halfcheetah', 'hopper' or 'walker2d'."
-        assert all([opn in ['d4rl', 'rarl', 'arrl', 'arrl_sgld', 'dataset_combo', 'randagent', 'ppo', 'trpo'] for opn in pipeline_config.dataset_config.online_policy_names]), "Online policy name needs to be either 'd4rl', 'rarl', 'arrl_prmdp', 'arrl_nrmdp', 'dataset_combo' or 'randagent'."
+        assert all([opn in ['d4rl', 'rarl', 'arrl', 'arrl_sgld', 'combo', 'robust', 'randagent', 'ppo', 'trpo'] for opn in pipeline_config.dataset_config.online_policy_names]), "Online policy name needs to be either 'd4rl', 'rarl', 'arrl_prmdp', 'arrl_nrmdp', 'dataset_combo' or 'randagent'."
         assert all([dt in ['train', 'test', 'expert', 'mixed', 'medium'] for dt in pipeline_config.dataset_config.dataset_types]), "Dataset type needs to be either 'train' or 'test' or 'expert' or 'mixed' or 'medium."
         assert pipeline_config.model_config.agent_type in ['dt', 'dt-multipart', 'dt_multipart', 'ardt-vanilla', 'ardt_vanilla', 'ardt-multipart', 'ardt_multipart'], "Agent type needs to be either 'dt', 'dt-multipart', 'dt_multipart', 'ardt-vanilla', 'ardt_vanilla', 'ardt-multipart' or 'ardt_multipart'."
-        assert pipeline_config.admin_config.wandb_project in ['afonsosamarques', 'timxiaohangt', 'ARDT-Project', 'ARDT-Internal', 'Experiment-1', 'Experiment-2', 'Experiment-3', 'Experiment-4', 'Experiment-5', 'DT', 'ARDT-Simplest', 'ARDT-Full'], "Wandb project needs to be either 'afonsosamarques' or 'timxiaohangt' or 'ARDT-Project' or 'ARDT-Internal' or 'Experiment-1' or 'Experiment-2' or 'Experiment-3'."
-        assert pipeline_config.admin_config.hf_project in ['afonsosamarques', 'timxiaohangt', 'ARDT-Project', 'ARDT-Internal', 'Experiment-1', 'Experiment-2', 'Experiment-3', 'Experiment-4', 'Experiment-5', 'DT', 'ARDT-Simplest', 'ARDT-Full'], "Wandb project needs to be either 'afonsosamarques' or 'timxiaohangt' or 'ARDT-Project' or 'ARDT-Internal' or 'Experiment-1' or 'Experiment-2' or 'Experiment-3'."
+        assert pipeline_config.admin_config.wandb_project in ['afonsosamarques', 'timxiaohangt', 'ARDT-Project', 'ARDT-Internal', 'Experiment-1', 'Experiment-2', 'Experiment-3', 'Experiment-4', 'Experiment-5', 'DT', 'ARDT-Simplest', 'ARDT-Full', 'exp1', 'exp2'], "Wandb project needs to be either 'afonsosamarques' or 'timxiaohangt' or 'ARDT-Project' or 'ARDT-Internal' or 'Experiment-1' or 'Experiment-2' or 'Experiment-3'."
+        assert pipeline_config.admin_config.hf_project in ['afonsosamarques', 'timxiaohangt', 'ARDT-Project', 'ARDT-Internal', 'Experiment-1', 'Experiment-2', 'Experiment-3', 'Experiment-4', 'Experiment-5', 'DT', 'ARDT-Simplest', 'ARDT-Full', 'exp1', 'exp2'], "Wandb project needs to be either 'afonsosamarques' or 'timxiaohangt' or 'ARDT-Project' or 'ARDT-Internal' or 'Experiment-1' or 'Experiment-2' or 'Experiment-3'."
         assert pipeline_config.admin_config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
         return pipeline_config

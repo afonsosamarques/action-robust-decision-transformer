@@ -202,10 +202,10 @@ if __name__ == "__main__":
     # set up model/train parameter combinations
     context_size = model_config.context_size   # to iterate over
     if len(context_size) == 0: context_size = [20]
-    # l1 = model_config.lambda1  # to iterate over
-    # if len(l1) == 0: l1 = [1.0]
-    # l2 = model_config.lambda2  # to iterate over
-    # if len(l2) == 0: l2 = [1.0]
+    l1 = model_config.lambda1  # to iterate over
+    if len(l1) == 0: l1 = [1.0]
+    l2 = model_config.lambda2  # to iterate over
+    if len(l2) == 0: l2 = [1.0]
 
     train_steps = 10**train_config.train_steps
     warmup_steps = [10**i for i in train_config.warmup_steps]  # to iterate over
@@ -221,7 +221,7 @@ if __name__ == "__main__":
     seeds = train_config.seeds  # to iterate over
     if len(seeds) == 0: seeds = [33]
 
-    params = [context_size, warmup_steps, train_batch_size, learning_rate, weight_decay, max_grad_norm, seeds]
+    params = [context_size, l1, l2, warmup_steps, train_batch_size, learning_rate, weight_decay, max_grad_norm, seeds]
     params_combinations = list(itertools.product(*params))
 
     # iterate through datasets
@@ -250,12 +250,12 @@ if __name__ == "__main__":
             }
             train_params = {
                 'train_steps': train_steps,
-                'warmup_steps': params_combination[1],
-                'train_batch_size': params_combination[2],
-                'learning_rate': params_combination[3],
-                'weight_decay': params_combination[4],
-                'max_grad_norm': params_combination[5],
-                'seed': params_combination[6],
+                'warmup_steps': params_combination[3],
+                'train_batch_size': params_combination[4],
+                'learning_rate': params_combination[5],
+                'weight_decay': params_combination[6],
+                'max_grad_norm': params_combination[7],
+                'seed': params_combination[8],
             }
 
             # set up model
