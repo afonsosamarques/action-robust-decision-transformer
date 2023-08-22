@@ -1,9 +1,9 @@
 #$ -S /bin/bash
 
-#$ -N ardt_vanilla
+#$ -N ardt-vanilla-walker2d-exp2
 #$ -l gpu=True
-#$ -l tmem=20G
-#$ -l h_rt=8:00:00
+#$ -l tmem=80G
+#$ -l h_rt=54:00:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 
@@ -15,7 +15,7 @@ source /home/amarques/envs/ardt-env/bin/activate
 version=0
 result_file="results.txt"
 lock_file="results.lock"
-config_name="ardt_vanilla"
+config_name="ardt-vanilla-walker2d-exp2"
 
 # create the files, if necessary
 touch $result_file

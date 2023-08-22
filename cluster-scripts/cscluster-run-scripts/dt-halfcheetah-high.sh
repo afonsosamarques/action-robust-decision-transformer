@@ -1,9 +1,9 @@
 #$ -S /bin/bash
 
-#$ -N dt_vanilla_flag
+#$ -N dt-halfcheetah-high
 #$ -l gpu=True
-#$ -l tmem=20G
-#$ -l h_rt=8:00:00
+#$ -l tmem=80G
+#$ -l h_rt=42:00:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 
@@ -15,7 +15,7 @@ source /home/amarques/envs/ardt-env/bin/activate
 version=0
 result_file="results.txt"
 lock_file="results.lock"
-config_name="dt_vanilla_flag"
+config_name="dt-halfcheetah-high"
 
 # create the files, if necessary
 touch $result_file
@@ -36,7 +36,7 @@ exec 200>&-
 
 # run the code
 nvidia-smi
-python3 -m ardt.pipeline --config_name $config_name --flag
+python3 -m ardt.pipeline --config_name $config_name
 result=$?
 
 # check the result and write to the file

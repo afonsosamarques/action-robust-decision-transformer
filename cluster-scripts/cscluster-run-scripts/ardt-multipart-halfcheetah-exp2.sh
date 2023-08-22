@@ -1,9 +1,9 @@
 #$ -S /bin/bash
 
-#$ -N ardt-full
+#$ -N ardt-multipart-halfcheetah-exp2
 #$ -l gpu=True
-#$ -l tmem=20G
-#$ -l h_rt=24:00:00
+#$ -l tmem=80G
+#$ -l h_rt=66:00:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 
@@ -15,7 +15,7 @@ source /home/amarques/envs/ardt-env/bin/activate
 version=0
 result_file="results.txt"
 lock_file="results.lock"
-config_name="ardt-full"
+config_name="ardt-multipart-halfcheetah-exp2"
 
 # create the files, if necessary
 touch $result_file

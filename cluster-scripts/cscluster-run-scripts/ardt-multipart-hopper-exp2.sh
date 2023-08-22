@@ -1,9 +1,9 @@
 #$ -S /bin/bash
 
-#$ -N ardt_multipart_flag
+#$ -N ardt-multipart-hopper-exp2
 #$ -l gpu=True
-#$ -l tmem=20G
-#$ -l h_rt=12:00:00
+#$ -l tmem=80G
+#$ -l h_rt=66:00:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 
@@ -15,7 +15,7 @@ source /home/amarques/envs/ardt-env/bin/activate
 version=0
 result_file="results.txt"
 lock_file="results.lock"
-config_name="ardt_multipart_flag"
+config_name="ardt-multipart-hopper-exp2"
 
 # create the files, if necessary
 touch $result_file
@@ -36,7 +36,7 @@ exec 200>&-
 
 # run the code
 nvidia-smi
-python3 -m ardt.pipeline --config_name $config_name --flag
+python3 -m ardt.pipeline --config_name $config_name
 result=$?
 
 # check the result and write to the file
