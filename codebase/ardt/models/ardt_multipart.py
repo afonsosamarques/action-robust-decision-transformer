@@ -3,8 +3,8 @@ import torch
 
 from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 
-from .ardt_utils import DecisionTransformerOutput, ADTEvalWrapper
-from .ardt_utils import StdReturnSquashFunc, StdActionSquashFunc, ExpFunc
+from .model_utils import DecisionTransformerOutput, ADTEvalWrapper
+from .model_utils import StdReturnSquashFunc, StdActionSquashFunc, ExpFunc
 
 
 class AdversarialDT(DecisionTransformerModel):
@@ -271,7 +271,7 @@ class StochasticDT(DecisionTransformerModel):
             )
 
 
-class TwoAgentDT(DecisionTransformerModel):
+class MultipartADT(DecisionTransformerModel):
 
     def __init__(self, config, logger=None):
         super().__init__(config)
