@@ -2,8 +2,8 @@
 
 #$ -N ardt-multipart-halfcheetah-level
 #$ -l gpu=True
-#$ -l tmem=60G
-#$ -l h_rt=24:00:00
+#$ -l tmem=40G
+#$ -l h_rt=12:00:00
 
 #$ -wd /home/amarques/action-robust-decision-transformer/codebase
 
