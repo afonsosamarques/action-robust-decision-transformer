@@ -127,4 +127,4 @@ def check_pipelinerun_config(config, do_checks=True):
         assert pipeline_config.admin_config.wandb_project in ['afonsosamarques', 'timxiaohangt', 'ARDT-Project', 'ARDT-Internal', 'Experiment-1', 'Experiment-2', 'Experiment-3', 'Experiment-4', 'Experiment-5', 'DT', 'ARDT-Simplest', 'ARDT-Full', 'exp1', 'exp2'], "Wandb project needs to be either 'afonsosamarques' or 'timxiaohangt' or 'ARDT-Project' or 'ARDT-Internal' or 'Experiment-1' or 'Experiment-2' or 'Experiment-3'."
         assert pipeline_config.admin_config.hf_project in ['afonsosamarques', 'timxiaohangt', 'ARDT-Project', 'ARDT-Internal', 'Experiment-1', 'Experiment-2', 'Experiment-3', 'Experiment-4', 'Experiment-5', 'DT', 'ARDT-Simplest', 'ARDT-Full', 'exp1', 'exp2'], "Wandb project needs to be either 'afonsosamarques' or 'timxiaohangt' or 'ARDT-Project' or 'ARDT-Internal' or 'Experiment-1' or 'Experiment-2' or 'Experiment-3'."
         assert pipeline_config.admin_config.run_type in ['core', 'pipeline', 'test'], "Run type needs to be either 'core', 'pipeline' or 'test'."
-        return pipeline_config
+    return pipeline_config
