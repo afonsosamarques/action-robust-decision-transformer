@@ -12,6 +12,8 @@ dataset_config:
 model_config:
   agent_type: "dt"
   context_size: [20]
+  lambda1: [1.0]
+  lambda2: [1.0]
 
 training_config:
   train_steps: 4
