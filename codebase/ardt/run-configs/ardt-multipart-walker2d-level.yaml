@@ -23,6 +23,6 @@ training_config:
   seeds: [33, 66, 99]
 
 admin_config:
-  wandb_project: "exp2" 
-  hf_project: "exp2"
+  wandb_project: "exp3" 
+  hf_project: "exp3"
   run_type: "core"
