@@ -115,7 +115,7 @@ def train(
         logging_strategy="steps",
         logging_steps=0.05,
         save_strategy="steps",
-        save_steps=0.2,
+        save_steps=1/3,
         report_to=("wandb" if not is_offline_log else "none"),
         skip_memory_metrics=True,
         run_name=model_name,
