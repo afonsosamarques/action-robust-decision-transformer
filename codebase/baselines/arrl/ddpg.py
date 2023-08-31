@@ -151,7 +151,7 @@ class DDPG:
                 else:
                     adv_mu = self.adversary(state)
 
-                    adv_mu = adv_mu.data.clamp(-1, 1)
+                adv_mu = adv_mu.data.clamp(-1, 1)
                 
                 if np.random.rand() < (1 - self.alpha):
                     mu = pr_mu
