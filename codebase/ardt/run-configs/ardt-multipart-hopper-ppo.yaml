@@ -1,0 +1,28 @@
+environment_config:
+  env_type: "hopper" 
+  max_ep_len: 1000
+  returns_scale: 1000
+
+dataset_config:
+  is_local: [true]
+  online_policy_names: ["ppo"]
+  dataset_types: ["train"]
+  dataset_versions: ["level"]
+
+model_config:
+  agent_type: "ardt-multipart"
+  context_size: [20]
+
+training_config:
+  train_steps: 4
+  warmup_steps: [3]
+  train_batch_size: [64]
+  learning_rate: [-4]
+  weight_decay: [-4]
+  max_grad_norm: [0.25] 
+  seeds: [33, 66, 99]
+
+admin_config:
+  wandb_project: "exp4" 
+  hf_project: "exp4"
+  run_type: "core"
