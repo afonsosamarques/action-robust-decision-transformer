@@ -25,6 +25,6 @@ training_config:
   seeds: [33, 66, 99]
 
 admin_config:
-  wandb_project: "exp3" 
-  hf_project: "exp3"
+  wandb_project: "multi-policy-learning" 
+  hf_project: "multi-policy-learning"
   run_type: "core"
