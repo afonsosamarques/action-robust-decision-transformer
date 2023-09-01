@@ -78,7 +78,7 @@ def evaluate(
             # reset environment
             state, _ = env.reset()
             pr_model.new_eval(start_state=state, eval_target=eval_target)
-            adv_model.new_eval(start_state=state, eval_target=eval_target)
+            adv_model.new_eval(start_state=state, eval_target=0)
 
             # run episode
             for t in range(env_steps):

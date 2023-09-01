@@ -80,7 +80,7 @@ def evaluate(
 
     with torch.no_grad():
         pr_model.new_batch_eval(start_states=start_states, eval_target=eval_target)
-        adv_model.new_batch_eval(start_states=start_states, eval_target=eval_target)
+        adv_model.new_batch_eval(start_states=start_states, eval_target=0)
         
         # run episode
         for t in range(env_steps):
