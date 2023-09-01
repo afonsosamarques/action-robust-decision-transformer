@@ -12,25 +12,18 @@ from .config_utils import load_model
 from .helpers import set_seed_everywhere, find_root_dir, scrappy_print_eval_dict
         
 
-def sample_env_params(env):
+MULTIPLIERS = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+
+
+def vary_body_mass(env, multiplier=1.0):
     mb = env.model.body_mass
-    mb = torch.tensor(mb)
-    gauss = torch.distributions.Normal(mb, torch.ones_like(mb) * 0.5)
-    mb = gauss.sample()
-    env.model.body_mass = np.array(mb)
-    
-    # mb = env.model.opt.gravity
-    # mb = torch.tensor(mb)
-    # gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.25)
-    # mb = gauss.sample()
-    # env.model.opt.gravity = np.array(mb)
+    env.model.body_mass = np.array(mb) * multiplier
+    return env
 
+
+def vary_friction(env, multiplier=1.0):
     mb = env.model.geom_friction
-    mb = torch.tensor(mb)
-    gauss = torch.distributions.Normal(mb, torch.ones_like(mb)*0.1)
-    mb = gauss.sample()
-    env.model.geom_friction = np.array(mb)
-
+    env.model.geom_friction = np.array(mb) * multiplier
     return env
     
 
@@ -63,66 +56,64 @@ def evaluate(
     print(f"Evaluating model {model_name} on environment {env_type}.")
 
     eval_dict = defaultdict(list)
-    run_fails = 0
-    run_idx = 0
-    n_runs = 0
+    n_runs = 1
 
-    while True:
-        run_idx += 1
-        if n_runs >= eval_iters:
-            break
-        
-        with torch.no_grad():
-            # set up environment for run
-            env = gym.make(env_name)
-            set_seed_everywhere(run_idx, env)
-            if is_adv_eval:
-                env = sample_env_params(env)
-                print(f"Starting episode {run_idx}. Checking that sampling worked. Body mass: ", env.model.body_mass)
-            else:
-                print(f"Starting episode {run_idx}.")
+    for p in [0, 1]:
+        variation_type = 'body-mass' if p == 0 else 'friction'
+        variation_func = vary_body_mass if p == 0 else vary_friction
 
-            # set up episode variables
-            episode_return, episode_length = 0, 0
+        while True:
+            if n_runs > eval_iters:
+                break
             
-            # reset environment
-            state, _ = env.reset()
-            model.new_eval(start_state=state, eval_target=eval_target)
+            with torch.no_grad():
+                # set up environment for run
+                env = gym.make(env_name)
+                set_seed_everywhere(n_runs, env)
+                if is_adv_eval:
+                    env = variation_func(env, multiplier=MULTIPLIERS[n_runs])
+                    print(f"Starting episode {n_runs}. Checking that sampling worked. Body mass: ", env.model.body_mass)
+                else:
+                    print(f"Starting episode {n_runs}.")
 
-            # run episode
-            for t in range(env_steps):
-                pr_action, adv_action = model.get_action(state=state)
-                state, reward, done, trunc, _ = env.step(pr_action.squeeze())
-                model.update_history(
-                    pr_action=pr_action, 
-                    adv_action=adv_action, 
-                    state=state, 
-                    reward=reward,
-                    timestep=t
-                )
-                episode_return += reward
-                episode_length += 1
+                # set up episode variables
+                episode_return, episode_length = 0, 0
+                
+                # reset environment
+                state, _ = env.reset()
+                model.new_eval(start_state=state, eval_target=eval_target)
 
-                # finish and log episode
-                if done or trunc or t == env_steps - 1:
-                    n_runs += 1
-                    eval_dict['iter'].append(run_idx)
-                    eval_dict['env_seed'].append(run_idx)
-                    eval_dict['init_target_return'].append(eval_target)
-                    eval_dict['ep_length'].append(episode_length)
-                    eval_dict['ep_return'].append(episode_return)
-                    run_fails = 0
-                    break
+                # run episode
+                for t in range(env_steps):
+                    pr_action, adv_action = model.get_action(state=state)
+                    state, reward, done, trunc, _ = env.step(pr_action.squeeze())
+                    model.update_history(
+                        pr_action=pr_action, 
+                        adv_action=adv_action, 
+                        state=state, 
+                        reward=reward,
+                        timestep=t
+                    )
+                    episode_return += reward
+                    episode_length += 1
 
-    
-    # show some simple statistics
-    if verbose:
-        scrappy_print_eval_dict(model_name, eval_dict)
+                    # finish and log episode
+                    if done or trunc or t == env_steps - 1:
+                        n_runs += 1
+                        eval_dict['iter'].append(n_runs)
+                        eval_dict['env_seed'].append(n_runs)
+                        eval_dict['init_target_return'].append(eval_target)
+                        eval_dict['ep_length'].append(episode_length)
+                        eval_dict['ep_return'].append(episode_return)
+                        break
 
-    # save eval_dict as json
-    dir_path = f'{find_root_dir()}/eval-outputs{run_suffix}/{model_name}/'
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-    with open(f"{dir_path}/{('env-adv' if is_adv_eval else 'no-adv')}.json", 'w') as f:
-        json.dump(eval_dict, f)
+        # show some simple statistics
+        if verbose:
+            scrappy_print_eval_dict(model_name, eval_dict)
 
+        # save eval_dict as json
+        dir_path = f'{find_root_dir()}/eval-outputs{run_suffix}/{model_name}/env-adv-{variation_type}'
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        with open(f"{dir_path}/{('env-adv' if is_adv_eval else 'no-adv')}.json", 'w') as f:
+            json.dump(eval_dict, f)
