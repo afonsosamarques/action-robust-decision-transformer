@@ -27,7 +27,7 @@ class RandomAgent:
     def __init__(self, action_space, is_adv=False):
         self.sample_pr_dir = lambda batch_size: torch.tensor(np.random.choice([-1, 1], size=(batch_size, action_space)))
         self.sample_pr_magn = lambda batch_size: torch.distributions.Uniform(0, 1).sample((batch_size, action_space,))
-        self.sample_adv_act = lambda batch_size: torch.distributions.Normal(0, 0.05).sample((batch_size, action_space,))
+        self.sample_adv_act = lambda batch_size: torch.distributions.Normal(0, 0.2).sample((batch_size, action_space,))
 
     def eval(self, *args, **kwargs):
         return RandomAgentWrapper(self)
@@ -36,7 +36,7 @@ class RandomAgent:
         pass
 
     def get_action(self, *args, **kwargs):
-        return (self.sample_pr_dir() * self.sample_pr_magn()).detach().cpu().numpy(), self.sample_adv_act().detach().cpu().numpy()
+        return (self.sample_pr_dir(1) * self.sample_pr_magn(1)).detach().cpu().numpy(), self.sample_adv_act(1).detach().cpu().numpy()
     
     def get_batch_actions(self, states, *args, batch_size=1, **kwargs):
         batch_size = states.shape[0]
