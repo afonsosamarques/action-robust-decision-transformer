@@ -1,0 +1,18 @@
+env_type: "hopper"
+run_type: "pipeline"
+hf_project: 'afonsosamarques'
+
+eval_type: "agent_adv" 
+eval_steps: 1000
+eval_target_return: 0 
+eval_iters: 256
+
+# always required
+trained_model_names: ['arrl', 'arrl-sgld']
+trained_model_types: ['arrl', 'arrl-sgld']
+trained_model_paths: ['evaluation_protocol/trained-models/arrl/hopper', 'evaluation_protocol/trained-models/arrl-sgld/hopper']
+
+# always required
+adv_model_names: ['no-adv', 'ardt-multipart-arrl_sgld_train_hopper_high-2308_1340-33', 'ardt-multipart-arrl_sgld_train_hopper_high-2308_1414-66', 'ardt-multipart-arrl_sgld_train_hopper_high-2308_1449-99', 'ardt-multipart-arrl_train_hopper_high-2308_1134-33', 'ardt-multipart-arrl_train_hopper_high-2308_1216-66', 'ardt-multipart-arrl_train_hopper_high-2308_1259-99', 'ardt-vanilla-arrl_sgld_train_hopper_high-2508_1903-33', 'ardt-vanilla-arrl_sgld_train_hopper_high-2508_1937-66', 'ardt-vanilla-arrl_sgld_train_hopper_high-2508_2011-99', 'ardt-vanilla-arrl_train_hopper_high-2508_1706-33', 'ardt-vanilla-arrl_train_hopper_high-2508_1744-66', 'ardt-vanilla-arrl_train_hopper_high-2508_1824-99', 'ardt-multipart-combo_train_hopper_v2-2308_0755-33', 'ardt-multipart-combo_train_hopper_v2-2308_0906-66', 'ardt-multipart-combo_train_hopper_v2-2308_1018-99', 'ardt-vanilla-combo_train_hopper_v2-2508_1336-33', 'ardt-vanilla-combo_train_hopper_v2-2508_1445-66', 'ardt-vanilla-combo_train_hopper_v2-2508_1553-99', 'ardt-multipart-robust_train_hopper_v3-2308_0529-33', 'ardt-multipart-robust_train_hopper_v3-2308_0618-66', 'ardt-multipart-robust_train_hopper_v3-2308_0706-99', 'ardt-vanilla-robust_train_hopper_v3-2508_1114-33', 'ardt-vanilla-robust_train_hopper_v3-2508_1202-66', 'ardt-vanilla-robust_train_hopper_v3-2508_1249-99', 'ardt-multipart-robust_train_hopper_level-0109_2000-33', 'ardt-multipart-robust_train_hopper_level-0109_2041-66', 'ardt-multipart-robust_train_hopper_level-0109_2125-99', 'ardt-vanilla-robust_train_hopper_level-0209_0214-33', 'ardt-vanilla-robust_train_hopper_level-0209_0253-66', 'ardt-vanilla-robust_train_hopper_level-0209_0334-99']
+adv_model_types: ['zeroagent', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla']
+adv_model_paths: ['evaluation_protocol/trained_models/zeroagent/model_hopper.json', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf']

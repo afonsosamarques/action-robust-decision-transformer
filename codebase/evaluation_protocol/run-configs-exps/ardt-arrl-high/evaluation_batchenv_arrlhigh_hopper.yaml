@@ -1,0 +1,18 @@
+env_type: "hopper"
+run_type: "pipeline"
+hf_project: 'afonsosamarques'
+
+eval_type: "batch_env_adv" 
+eval_steps: 1000 
+eval_target_return: 3000 
+eval_iters: 256
+
+# always required
+trained_model_names: ['ardt-multipart-arrl_train_hopper_high-2308_1134-33', 'ardt-multipart-arrl_train_hopper_high-2308_1216-66', 'ardt-multipart-arrl_train_hopper_high-2308_1259-99', 'ardt-vanilla-arrl_train_hopper_high-2508_1706-33', 'ardt-vanilla-arrl_train_hopper_high-2508_1744-66', 'ardt-vanilla-arrl_train_hopper_high-2508_1824-99', 'dt-arrl_train_hopper_high-2908_1211-33', 'dt-arrl_train_hopper_high-2908_1249-66', 'dt-arrl_train_hopper_high-2908_1327-99']
+trained_model_types: ['ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla', 'dt', 'dt', 'dt']
+trained_model_paths: ['hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf']
+
+# not required
+adv_model_names: [] 
+adv_model_types: []  
+adv_model_paths: []

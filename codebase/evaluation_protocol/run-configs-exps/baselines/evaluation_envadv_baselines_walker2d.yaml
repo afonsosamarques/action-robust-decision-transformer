@@ -1,0 +1,18 @@
+env_type: "walker2d"
+run_type: "pipeline"
+hf_project: 'afonsosamarques'
+
+eval_type: "env_adv" 
+eval_steps: 1000 
+eval_target_return: 0 
+eval_iters: 256
+
+# always required
+trained_model_names: ['arrl', 'arrl-sgld']
+trained_model_types: ['arrl', 'arrl-sgld']
+trained_model_paths: ['evaluation_protocol/trained-models/arrl/walker2d', 'evaluation_protocol/trained-models/arrl-sgld/walker2d']
+
+# not required
+adv_model_names: [] 
+adv_model_types: []  
+adv_model_paths: []

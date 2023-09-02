@@ -1,0 +1,18 @@
+env_type: "walker2d"
+run_type: "pipeline"
+hf_project: 'afonsosamarques'
+
+eval_type: "batch_env_adv" 
+eval_steps: 1000 
+eval_target_return: 1100 
+eval_iters: 256
+
+# always required
+trained_model_names: ['ardt-multipart-arrl_sgld_train_walker2d_high-2408_0605-33', 'ardt-multipart-arrl_sgld_train_walker2d_high-2408_0701-66', 'ardt-multipart-arrl_sgld_train_walker2d_high-2408_0757-99', 'ardt-vanilla-arrl_sgld_train_walker2d_high-2608_1112-33', 'ardt-vanilla-arrl_sgld_train_walker2d_high-2608_1206-66', 'ardt-vanilla-arrl_sgld_train_walker2d_high-2608_1258-99', 'dt-arrl_sgld_train_walker2d_high-2908_1606-33', 'dt-arrl_sgld_train_walker2d_high-2908_1658-66', 'dt-arrl_sgld_train_walker2d_high-2908_1749-99']
+trained_model_types: ['ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla', 'dt', 'dt', 'dt']
+trained_model_paths: ['hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf']
+
+# not required
+adv_model_names: [] 
+adv_model_types: []  
+adv_model_paths: []

@@ -1,0 +1,18 @@
+env_type: "halfcheetah"
+run_type: "pipeline"
+hf_project: 'afonsosamarques'
+
+eval_type: "batch_env_adv" 
+eval_steps: 1000 
+eval_target_return: 1800 
+eval_iters: 256
+
+# always required
+trained_model_names: ['ardt-multipart-arrl_sgld_train_halfcheetah_high-2308_0750-33', 'ardt-multipart-arrl_sgld_train_halfcheetah_high-2308_1003-66', 'ardt-multipart-arrl_sgld_train_halfcheetah_high-2308_1230-99', 'ardt-vanilla-arrl_sgld_train_halfcheetah_high-2508_0437-33', 'ardt-vanilla-arrl_sgld_train_halfcheetah_high-2508_0648-66', 'ardt-vanilla-arrl_sgld_train_halfcheetah_high-2508_0900-99', 'dt-arrl_sgld_train_halfcheetah_high-2708_0940-33', 'dt-arrl_sgld_train_halfcheetah_high-2708_1151-66', 'dt-arrl_sgld_train_halfcheetah_high-2708_1402-99']
+trained_model_types: ['ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-vanilla', 'ardt-vanilla', 'ardt-vanilla', 'dt', 'dt', 'dt']
+trained_model_paths: ['hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf']
+
+# not required
+adv_model_names: [] 
+adv_model_types: []  
+adv_model_paths: []
