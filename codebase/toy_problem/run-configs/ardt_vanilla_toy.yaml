@@ -1,0 +1,41 @@
+environment_config:
+  env_type: "halfcheetah"  # halfcheetah, hopper, walker2d
+  max_ep_len: 1000  # limit episode length for offline dataset
+  max_ep_return: 12000  # max "possible" returns per episode of size max_ep_len
+  returns_scale: 1  # scale returns, 1000 to match original DT implementation
+
+dataset_config:
+  is_local: [true]  
+  online_policy_names: ["toy_dataset", "toy_dataset", "toy_dataset"]  
+  dataset_types: ["", "", ""]  
+  dataset_versions: ["v1", "v2", "v3"]  # here we add the versioning! v1, v2, etc. Very Important!!!
+
+model_config:
+  agent_type: "ardt-vanilla"  # dt, ardt-simplest, ardt-vanilla, ardt-full
+  context_size: [1]  # these are for different parameter combinations to try!! | original: 20 (depends a bit on env)
+  lambda1: []  # these are for different parameter combinations to try!!
+  lambda2: []  # these are for different parameter combinations to try!!
+
+training_config:
+  train_steps: 4  # 6 => 10**6
+  train_batch_size: 64  # 32/64
+  learning_rate: [-3]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
+  weight_decay: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
+  max_grad_norm: [0.25]  # these are for different parameter combinations to try!! | original: 0.25
+  warmup_steps: [0]  # these are for different parameter combinations to try!! again 4 => 10**4 | original: 10**5
+
+evaluation_config:
+  is_eval: true 
+  eval_type: "batch_agent_adv"
+  eval_target_return: 0
+  eval_iters: 0
+  # only the below fields matter here
+  adv_model_names: ['worstcase']
+  adv_model_types: ['worstcase']
+
+admin_config:
+  wandb_project: "Experiment-2"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
+  hf_project: "Experiment-2"  # "afonsosamarques", "ARDT-Project", "ARDT-Internal"
+  run_type: "test"  # "core", "pipeline", or "test"
+  is_verbose: false  # whether to print anything at all
+  print_tracebacks: false  # whether to print tracebacks of errors

@@ -12,16 +12,13 @@ class VanillaDT(DecisionTransformerModel):
         self.logger = logger
         self.step = 0
 
-    def forward(self, is_train=True, returns_to_go_scaled=None, **kwargs):
+    def forward(self, is_train=True,  **kwargs):
         new_kwargs = kwargs.copy()
         if "pr_actions" in new_kwargs:
             # change to be able to utilise the default code
             new_kwargs["actions"] = new_kwargs.pop("pr_actions")
             new_kwargs.pop("adv_actions")
-            new_kwargs.pop("pr_actions_filtered")
-            new_kwargs.pop("adv_actions_filtered")
             new_kwargs.pop("next_returns_to_go")
-            new_kwargs.pop("next_returns_to_go_scaled")
         
         if is_train:
             # add the DT loss; applied only to non-padding values in action head

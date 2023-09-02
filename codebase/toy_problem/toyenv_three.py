@@ -32,6 +32,44 @@ class OneStepEnvVThree(gym.Env):
         return np.array([0]), {}
     
     @classmethod
+    def get_returns_for_action(cls, action):
+        if np.all(action == np.array([0, 0, 0])):
+            return 0.0
+        elif np.all(action == np.array([0, 0, 1])):
+            return 1.5
+        elif np.all(action == np.array([0, 1, 0])):
+            return 2.5
+        elif np.all(action == np.array([0, 1, 1])):
+            return 3.0
+        elif np.all(action == np.array([1, 0, 0])):
+            return 0.75
+        elif np.all(action == np.array([1, 0, 1])):
+            return 1.0
+        elif np.all(action == np.array([1, 1, 0])):
+            return 3.0
+        elif np.all(action == np.array([1, 1, 1])):
+            return 0.75
+        
+    @classmethod
+    def get_wc_returns_for_pr_action(cls, action):
+        if np.all(action == np.array([0, 0, 0])):
+            return 0.0
+        elif np.all(action == np.array([0, 0, 1])):
+            return 0.0
+        elif np.all(action == np.array([0, 1, 0])):
+            return 0.0
+        elif np.all(action == np.array([0, 1, 1])):
+            return 0.0
+        elif np.all(action == np.array([1, 0, 0])):
+            return 0.75
+        elif np.all(action == np.array([1, 0, 1])):
+            return 0.75
+        elif np.all(action == np.array([1, 1, 0])):
+            return 0.75
+        elif np.all(action == np.array([1, 1, 1])):
+            return 0.75
+    
+    @classmethod
     def get_correct_pr_action(cls, target):
         if target == 0.0:
             return [([0], 1.0)]
@@ -51,9 +89,9 @@ class OneStepEnvVThree(gym.Env):
         if target == 0.0:
             return [([0], 1.0)]
         elif target == 1.5:
-            return [([0], 1.0)]
+            return [([1], 1.0)]
         elif target == 2.5:
-            return [([0], 1.0)]
+            return [([1], 1.0)]
         elif target == 3.0:
             return [([1], 1.0)]
         elif target == 0.75:

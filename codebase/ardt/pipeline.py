@@ -36,11 +36,11 @@ def train(
         is_offline_log=False,
         run_suffix='',
         device=torch.device('cpu'),
-        flag=False,
+        flag=0,
     ):
     num_workers = (0 if device == torch.device('mps') or device == torch.device("cpu") else min(4, os.cpu_count()-2))
     print("============================================================================================================")
-    print(f"\nTraining {model_name} using seed {train_params['seed']} on dataset {dataset_name} on device {device} with a total of {num_workers} cores for data loading. Starting at {datetime.datetime.now()}.\n")
+    print(f"\nTraining {model_name} using seed {train_params['seed']} and flag {flag} on dataset {dataset_name} on device {device} with a total of {num_workers} cores for data loading. Starting at {datetime.datetime.now()}.\n")
     print("================================================")
 
     # here we define the data treatment
@@ -50,9 +50,7 @@ def train(
         returns_scale=env_params['returns_scale'],
         is_multipart=is_multipart,
     )
-    max_ep_len = collator.max_ep_len
-    env_max_return = collator.max_ep_return if collator.max_ep_return % 1 == 0 else int(collator.max_ep_return) + 1
-
+ 
     # here we store both environment and model parameters
     model_config = DecisionTransformerConfig(
         state_dim=collator.state_dim, 
@@ -65,12 +63,13 @@ def train(
         lambda1=model_params['lambda1'],
         lambda2=model_params['lambda2'],
         returns_scale=env_params['returns_scale'],
-        max_ep_len=max_ep_len,
-        max_obs_len=max_ep_len,
-        max_ep_return=env_max_return,
-        max_obs_return=env_max_return,
-        min_ep_return=collator.min_ep_return,
-        min_obs_return=collator.min_ep_return,
+        max_ep_len=collator.max_ep_len,
+        max_obs_len=collator.max_ep_len,
+        max_ep_return=collator.max_ep_rtg,
+        max_obs_return=collator.max_ep_rtg,
+        min_ep_return=collator.min_ep_rtg,
+        min_obs_return=collator.min_ep_rtg,
+        rtg_shift=collator.rtg_shift,    
         warmup_steps=train_params['warmup_steps'],
         total_train_steps=train_params['train_steps'],
         log_interval_steps=100,
@@ -113,7 +112,7 @@ def train(
         disable_tqdm=False,
         log_level="error",
         logging_strategy="steps",
-        logging_steps=0.05,
+        logging_steps=0.1,
         save_strategy="steps",
         save_steps=1/3,
         report_to=("wandb" if not is_offline_log else "none"),
@@ -179,7 +178,7 @@ if __name__ == "__main__":
     # load config
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_name', type=str, required=True, help='Name of yaml configuration file to use.')
-    parser.add_argument('--flag', action='store_true', help='Flag if we want to try something different without changing the entire code.')
+    parser.add_argument('--flag', type=int, default=0, help='Flag if we want to try something different without changing the entire code.')
     args = parser.parse_args()
 
     with open(f'{find_root_dir()}/run-configs/{args.config_name}.yaml', 'r') as f:
@@ -266,8 +265,6 @@ if __name__ == "__main__":
             env_type = env_config.env_type
             chosen_agent, is_multipart = load_agent(agent_type)
             model_name = build_model_name(agent_type, dataset_name, seed=params_combination[8])
-            if is_multipart:
-                model_params['context_size'] += 1
             
             # train and recover path
             model_path_local = train(

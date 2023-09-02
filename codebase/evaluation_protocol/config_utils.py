@@ -6,9 +6,9 @@ from pydantic import BaseModel, Field
 from transformers import DecisionTransformerConfig
 
 from ardt.models.dt_vanilla import VanillaDT
-from ardt.models.dt_multipart import MultipartDT
-from ardt.models.ardt_vanilla import AdversarialDT
-from ardt.models.ardt_multipart import MultipartADT
+from ardt.models.ardt_vanilla import VanillaARDT
+from ardt.models.ardt_multipart import MultipartARDT
+from ardt.models.ardt_multipart_old import MultipartARDTOld
 
 from baselines.arrl.ddpg import DDPG
 from baselines.arrl_sgld.ddpg import DDPG as DDPG_SGLD
@@ -92,18 +92,57 @@ def load_model(model_type, model_to_use, model_path):
         config = DecisionTransformerConfig.from_pretrained(model_path)
         model = VanillaDT(config)
         return model.from_pretrained(model_path), False
-    elif model_type == "dt-multipart" or model_type == "dt_multipart":
-        config = DecisionTransformerConfig.from_pretrained(model_path)
-        model = MultipartDT(config)
-        return model.from_pretrained(model_path), False
     elif model_type == "ardt-vanilla" or model_type == "ardt_vanilla":
         config = DecisionTransformerConfig.from_pretrained(model_path)
-        model = AdversarialDT(config)
+        model = VanillaARDT(config)
         return model.from_pretrained(model_path), True
     elif model_type == "ardt-multipart" or model_type == "ardt_multipart":
         config = DecisionTransformerConfig.from_pretrained(model_path)
-        model = MultipartADT(config)
+        model = MultipartARDT(config)
         return model.from_pretrained(model_path), False
+    elif model_type == "arrl":
+        return load_arrl_model(model_path), True
+    elif model_type == "arrl-sgld":
+        return load_arrl_sgld_model(model_path), True
+    elif model_type == "ppo":
+        # because we need some methods to be defined and it is hard work to override stable baselines, we wrap it straight away
+        with open(model_path, 'rb'):
+            model = PPO.load(model_path)
+        return SBEvalWrapper(model), False
+    elif model_type == "trpo":
+        # because we need some methods to be defined and it is hard work to override stable baselines, we wrap it straight away
+        with open(model_path, 'rb'):
+            model = TRPO.load(model_path)
+        return SBEvalWrapper(model), False
+    elif model_type == "random" or model_type == "randagent":
+        # really we could just pass in the action space, but this is more similar to the rest of it
+        # just need a json file with the action space of the given environment we are evaluating on
+        with open(model_path, 'rb') as f:
+            model_params = json.load(f)
+        return RandomAgentWrapper(RandomAgent(model_params['action_space'])), True
+    elif model_type == "zero" or model_type == "zeroagent":
+        # really we could just pass in the action space, but this is more similar to the rest of it
+        # just need a json file with the action space of the given environment we are evaluating on
+        with open(model_path, 'rb') as f:
+            model_params = json.load(f)
+        return ZeroAgentWrapper(ZeroAgent(model_params['action_space'])), True
+    else:
+        raise Exception(f"Model {model_to_use} of type {model_type} not available.")
+    
+
+def load_adv_model(model_type, model_to_use, model_path):
+    if model_type == "dt":
+        config = DecisionTransformerConfig.from_pretrained(model_path)
+        model = VanillaDT(config)
+        return model.from_pretrained(model_path), False
+    elif model_type == "ardt-vanilla" or model_type == "ardt_vanilla":
+        config = DecisionTransformerConfig.from_pretrained(model_path)
+        model = VanillaARDT(config)
+        return model.from_pretrained(model_path), True
+    elif model_type == "ardt-multipart" or model_type == "ardt_multipart":
+        config = DecisionTransformerConfig.from_pretrained(model_path)
+        model = MultipartARDTOld(config)
+        return model.from_pretrained(model_path), True
     elif model_type == "arrl":
         return load_arrl_model(model_path), True
     elif model_type == "arrl-sgld":

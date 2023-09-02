@@ -6,7 +6,7 @@ from transformers import DecisionTransformerModel, DecisionTransformerGPT2Model
 from .model_utils import DecisionTransformerOutput, ADTEvalWrapper
 
 
-class AdversarialDT(DecisionTransformerModel):
+class VanillaARDT(DecisionTransformerModel):
     def __init__(self, config, logger=None):
         super().__init__(config)
         self.config = config
@@ -38,19 +38,14 @@ class AdversarialDT(DecisionTransformerModel):
         is_train=True,
         states=None,
         pr_actions=None,
-        pr_actions_filtered=None,
         adv_actions=None,
-        adv_actions_filtered=None,
-        rewards=None,
         returns_to_go=None,
-        next_returns_to_go=None,
-        returns_to_go_scaled=None,
-        next_returns_to_go_scaled=None,
         timesteps=None,
         attention_mask=None,
         output_hidden_states=None,
         output_attentions=None,
-        return_dict=None,):
+        return_dict=None,
+        **kwargs,):
         #
         # setting configurations for what goes into the output
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
@@ -67,8 +62,8 @@ class AdversarialDT(DecisionTransformerModel):
 
         # embed each modality with a different head
         state_embeddings = self.embed_state(states)
-        pr_action_embeddings = self.embed_pr_action(pr_actions_filtered)
-        adv_action_embeddings = self.embed_adv_action(adv_actions_filtered)
+        pr_action_embeddings = self.embed_pr_action(pr_actions)
+        adv_action_embeddings = self.embed_adv_action(adv_actions)
         returns_embeddings = self.embed_return(returns_to_go)
         time_embeddings = self.embed_timestep(timesteps)
 
@@ -123,12 +118,12 @@ class AdversarialDT(DecisionTransformerModel):
 
             adv_action_preds = adv_action_preds.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
             adv_action_targets = adv_actions.reshape(-1, self.config.adv_act_dim)[attention_mask.reshape(-1) > 0]
-            adv_action_loss = self.config.lambda2 * torch.mean((adv_action_preds - adv_action_targets) ** 2)
+            adv_action_loss = torch.mean((adv_action_preds - adv_action_targets) ** 2)
 
             if self.logger is not None and (self.step == 0 or self.step % self.config.log_interval_steps == 0):
                 self.logger.add_entry(
                     step=self.step,
-                    hyperparams={"lambda2": self.config.lambda2},
+                    hyperparams=None,
                     tr_losses={"loss": (pr_action_loss + adv_action_loss).item(), 
                                "pr_action_loss": pr_action_loss.item(), 
                                "adv_action_loss": adv_action_loss.item()},
@@ -190,9 +185,7 @@ class AdversarialDT(DecisionTransformerModel):
             is_train=False,
             states=states,
             pr_actions=pr_actions,
-            pr_actions_filtered=pr_actions,
             adv_actions=adv_actions,
-            adv_actions_filtered=adv_actions,
             rewards=rewards,
             returns_to_go=returns_to_go,
             timesteps=timesteps,

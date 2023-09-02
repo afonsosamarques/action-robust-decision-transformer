@@ -87,6 +87,8 @@ if __name__ == "__main__":
 
     env = NormalizedActions(gym.make(args.env_name))
     eval_env = NormalizedActions(gym.make(args.env_name))
+
+    args.alpha = min(0.2, max(0.1, torch.distributions.Beta(3, 20).sample().item()))
     
     agent = DDPG(beta=args.beta, epsilon=args.epsilon, learning_rate=args.learning_rate, gamma=args.gamma, tau=args.tau, 
                     hidden_size_dim0=args.hidden_size_dim0, hidden_size_dim1=args.hidden_size_dim1, 

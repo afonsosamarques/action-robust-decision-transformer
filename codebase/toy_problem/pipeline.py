@@ -4,7 +4,6 @@ import itertools
 import os
 import subprocess
 import json
-import random
 
 import numpy as np
 import torch
@@ -17,12 +16,10 @@ from datasets import Dataset
 from huggingface_hub import login
 from transformers import DecisionTransformerConfig, Trainer, TrainingArguments
 
-from ardt.utils.config_utils import check_pipelinerun_config, load_run_suffix, load_env_name, build_model_name
+from .utils import check_pipelinerun_config, load_run_suffix, load_env_name, build_model_name, set_seed_everywhere, load_agent, load_model, find_root_dir
 
-from .discrete_models.trainable_dt import TrainableDT
-from .discrete_models.ardt_simplest import SimpleRobustDT
-from .discrete_models.ardt_full import TwoAgentRobustDT
-from .discrete_models.ardt_utils import DecisionTransformerGymDataCollator
+from .discrete_models.model_utils import DecisionTransformerGymDataCollator
+
 from .toyenv_one import create_onestep_vone_toy_dataset, OneStepEnvVOne
 from .toyenv_two import create_onestep_vtwo_toy_dataset, OneStepEnvVTwo
 from .toyenv_three import create_onestep_vthree_toy_dataset, OneStepEnvVThree
@@ -35,62 +32,13 @@ N_MODELS = 30
 EVAL_ITERS = 1024
 
 
-############# We need local versions of these #############
-def find_root_dir():
-    try:
-        root_dir = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).strip().decode('utf-8')
-    except Exception as e:
-        root_dir = os.getcwd()[:os.getcwd().find('action-robust-decision-transformer')+len('action-robust-decision-transformer')]
-    return root_dir + ('' if root_dir.endswith('action-robust-decision-transformer') else '/action-robust-decision-transformer') + "/codebase/toy_problem"
-
-
-def load_agent(agent_type):
-    if agent_type == "dt":
-        return TrainableDT
-    elif agent_type == "ardt-simplest" or agent_type == "ardt_simplest":
-        return SimpleRobustDT
-    elif agent_type == "ardt-full" or agent_type == "ardt_full":
-        return TwoAgentRobustDT
-    else:
-        raise Exception(f"Agent type {agent_type} not available.")
-    
-
-def load_model(model_type, model_to_use, model_path):
-    if model_type == "dt":
-        config = DecisionTransformerConfig.from_pretrained(model_path)
-        model = TrainableDT(config)
-        return model.from_pretrained(model_path), False
-    elif model_type == "ardt-simplest" or model_type == "ardt_simplest":
-        config = DecisionTransformerConfig.from_pretrained(model_path)
-        model = SimpleRobustDT(config)
-        return model.from_pretrained(model_path), True
-    elif model_type == "ardt-full" or model_type == "ardt_full":
-        config = DecisionTransformerConfig.from_pretrained(model_path)
-        model = TwoAgentRobustDT(config)
-        return model.from_pretrained(model_path), True
-    else:
-        raise Exception(f"Model {model_to_use} of type {model_type} not available.")
-    
-
-def set_seed_everywhere(seed, env=None):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.mps.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    if env is not None:
-        env.seed = seed
-        env.action_space.seed = seed
-
-
-############################################################
-
-
 def train(
         model_name,
         chosen_agent,
+        is_multipart,
         dataset_name,
         dataset,
+        env_version,
         env_params,
         model_params,
         train_params,
@@ -99,9 +47,9 @@ def train(
         is_offline_log=False,
         run_suffix='',
         device=torch.device('cpu'),
-        is_stochastic=False,
+        flag=0,
     ):
-    num_workers = os.cpu_count() - 2
+    num_workers = (0 if device == torch.device('mps') or device == torch.device("cpu") else os.cpu_count() - 2)
 
     print("============================================================================================================")
     print(f"\nTraining {model_name} on dataset {dataset_name} on device {device} with a total of {num_workers} cores for data loading. Starting at {datetime.datetime.now()}.\n")
@@ -112,19 +60,13 @@ def train(
         dataset=dataset,
         context_size=model_params['context_size'],
         returns_scale=env_params['returns_scale'],
+        is_multipart=is_multipart,
     )
 
-    max_ep_len = env_params['max_ep_len']
-    if max_ep_len < 0.95 * collator.max_ep_len or max_ep_len > 1.05 * collator.max_ep_len:
-        max_ep_len = collator.max_ep_len
-        print(f"WARNING: config max_ep_len={env_params['max_ep_len']} is not close to observed max_ep_len={collator.max_ep_len}. Defaulting to observed length {max_ep_len}.")
-    
-    env_max_return = env_params['max_ep_return']
-    if env_max_return > collator.max_ep_return:
-        env_max_return = collator.max_ep_return
-        print(f"WARNING: config max_ep_return={env_params['max_ep_return']} is higher than observed max_ep_return={collator.max_ep_return}. Defaulting to max episode return {env_max_return}.")
-    
     # here we store both environment and model parameters
+    max_ep_len = collator.max_ep_len
+    env_max_return = env_params['max_ep_return']
+
     model_config = DecisionTransformerConfig(
         state_dim=collator.state_dim, 
         act_dim=collator.pr_act_dim,
@@ -136,20 +78,23 @@ def train(
         lambda1=model_params['lambda1'],
         lambda2=model_params['lambda2'],
         returns_scale=env_params['returns_scale'],
-        max_ep_len=max(max_ep_len, collator.max_ep_len),
-        max_obs_len=collator.max_ep_len,
-        max_ep_return=max(env_max_return, collator.max_ep_return),
-        max_obs_return=collator.max_ep_return,
+        max_ep_len=max_ep_len,
+        max_obs_len=max_ep_len,
+        max_ep_return=env_max_return,
+        max_obs_return=env_max_return,
         min_ep_return=collator.min_ep_return,
         min_obs_return=collator.min_ep_return,
-        warmup_steps=train_params['warmup_steps'],  # exception: this is used in training but due to HF API it must be in config as well
+        warmup_steps=train_params['warmup_steps'],
+        total_train_steps=train_params['train_steps'],
         log_interval_steps=100,
         discrete_returns=list(collator.discrete_returns),
-        is_stochastic=is_stochastic,
+        flag=flag,
+        env_version=env_version,
     )
 
     # here we define the training protocol
     hub_model_id = hf_project + "/" + model_name if hf_project is not None else model_name
+    set_seed_everywhere(train_params['seed'])
     training_args = TrainingArguments(
         output_dir=f"{find_root_dir()}/agents{run_suffix}/" + model_name,
         remove_unused_columns=False,
@@ -211,8 +156,7 @@ if __name__ == "__main__":
     # load config
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_name', type=str, required=True, help='Name of yaml configuration file to use.')
-    parser.add_argument('--is_test_run', action='store_true', help='Whether this is a test run. Set if it is, ignore if it is not.')
-    parser.add_argument('--is_stochastic', action='store_true', help='Whether to run the stochastic version of the architecture. Set if it is, ignore if it is not.' )
+    parser.add_argument('--flag', type=int, default=0, help='Flag if we want to try something different without changing the entire code.')
     args = parser.parse_args()
 
     with open(f'{find_root_dir()}/run-configs/{args.config_name}.yaml', 'r') as f:
@@ -238,29 +182,24 @@ if __name__ == "__main__":
     }
 
     # set up model/train parameter combinations
-    context_size = model_config.context_size  # to iterate over
-    l1 = model_config.lambda1  # to iterate over
-    if len(l1) == 0: l1 = [1.0]
-    l2 = model_config.lambda2  # to iterate over
-    if len(l2) == 0: l2 = [1.0]
+    context_size = model_config.context_size   # to iterate over
+    if len(context_size) == 0: context_size = [20]
 
     train_steps = 10**train_config.train_steps
     train_batch_size = train_config.train_batch_size
+    warmup_steps = [10**i for i in train_config.warmup_steps]  # to iterate over
+    if len(warmup_steps) == 0: warmup_steps = [0]
     learning_rate = [10**i for i in train_config.learning_rate]  # to iterate over
     if len(learning_rate) == 0: learning_rate = [1e-4]
     weight_decay = [10**i for i in train_config.weight_decay]  # to iterate over
     if len(weight_decay) == 0: weight_decay = [1e-4]
     max_grad_norm = train_config.max_grad_norm  # to iterate over
     if len(max_grad_norm) == 0: max_grad_norm = [0.25]
-    warmup_steps = [10**i for i in train_config.warmup_steps]  # to iterate over
-    if len(warmup_steps) == 0: warmup_steps = [0]
 
-    params = [context_size, l1, l2, learning_rate, weight_decay, max_grad_norm, warmup_steps]
+    params = [context_size, warmup_steps, learning_rate, weight_decay, max_grad_norm]
     params_combinations = list(itertools.product(*params))
 
     # build, train and evaluate models
-    is_stochastic = args.is_stochastic
-
     dataset_names = config.dataset_config.online_policy_names
     dataset_versions = config.dataset_config.dataset_versions
 
@@ -280,34 +219,37 @@ if __name__ == "__main__":
             adv_to_results = defaultdict(list)
 
             for itr in range(N_MODELS):
-                set_seed_everywhere(seed=itr)
-
                 model_params = {
                     'context_size': params_combination[0],
-                    'lambda1': params_combination[1],
-                    'lambda2': params_combination[2],
+                    'lambda1': 1,
+                    'lambda2': 1,
                 }
                 train_params = {
-                    'train_steps': train_steps if not args.is_test_run else 10,
+                    'train_steps': train_steps,
+                    'warmup_steps': params_combination[1],
                     'train_batch_size': train_batch_size,
-                    'learning_rate': params_combination[3],
-                    'weight_decay': params_combination[4],
-                    'max_grad_norm': params_combination[5],
-                    'warmup_steps': params_combination[6],
+                    'learning_rate': params_combination[2],
+                    'weight_decay': params_combination[3],
+                    'max_grad_norm': params_combination[4],
+                    'seed': itr,
                 }
 
                 # set up model
                 agent_type = model_config.agent_type
                 env_type = env_config.env_type
-                chosen_agent = load_agent(agent_type)
-                model_name = build_model_name(agent_type, dataset_id)
+                chosen_agent, is_multipart = load_agent(agent_type)
+                model_name = build_model_name(agent_type, dataset_name)
+                if is_multipart:
+                    model_params['context_size'] += 1
                 
                 # train and recover path
                 model_path_local = train(
                     model_name=model_name,
                     chosen_agent=chosen_agent,
+                    is_multipart=is_multipart,
                     dataset_name=dataset_id,
                     dataset=dataset,
+                    env_version=dataset_version,
                     env_params=env_params,
                     model_params=model_params,
                     train_params=train_params,
@@ -316,9 +258,8 @@ if __name__ == "__main__":
                     is_offline_log=is_offline_log,
                     run_suffix=run_suffix,
                     device=device,
-                    is_stochastic=is_stochastic,
+                    flag=args.flag,
                 )
-
                 models.append([model_name, agent_type, model_path_local])
 
                 # evaluate if desired
@@ -455,7 +396,7 @@ if __name__ == "__main__":
             # print out results
             for adv_model_name, results in adv_to_results.items():
                 print("================================================")
-                print(f"For protagonist model {model_name} and adversary model {adv_model_name}. \n")
+                print(f"For protagonist model {model_name} on environment {dataset_name} and adversary model {adv_model_name}. \n")
 
                 everything_store[f"{adv_model_name}"] = []
 
@@ -513,10 +454,9 @@ if __name__ == "__main__":
                     })
 
         # save results
-        denom = "stochastic" if is_stochastic else "deterministic"
-        if not os.path.exists(f'{find_root_dir()}/results/{denom}/{env_name}/{agent_type}'):
-            os.makedirs(f'{find_root_dir()}/results/{denom}/{env_name}/{agent_type}')
-        with open(f'{find_root_dir()}/results/{denom}/{env_name}/{agent_type}/results.json', 'w') as f:
+        if not os.path.exists(f'{find_root_dir()}/results/{env_name}/{agent_type}'):
+            os.makedirs(f'{find_root_dir()}/results/{env_name}/{agent_type}')
+        with open(f'{find_root_dir()}/results/{env_name}/{agent_type}/results.json', 'w') as f:
             json.dump(everything_store, f)
 
     print("\n========================================================================================================================")

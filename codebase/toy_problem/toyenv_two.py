@@ -13,9 +13,9 @@ class OneStepEnvVTwo(gym.Env):
         if np.all(action == np.array([0, 0, 0])):
             return np.array([1]), 5.0, True, False, {}
         elif np.all(action == np.array([0, 0, 1])):
-            return np.array([2]), -15.0, True, False, {}
+            return np.array([2]), -3.0, True, False, {}
         elif np.all(action == np.array([0, 1, 0])):
-            return np.array([3]), -6.0, True, False, {}
+            return np.array([3]), -2.0, True, False, {}
         elif np.all(action == np.array([0, 1, 1])):
             return np.array([4]), 1.0, True, False, {}
         elif np.all(action == np.array([1, 0, 0])):
@@ -32,12 +32,50 @@ class OneStepEnvVTwo(gym.Env):
         return np.array([0]), {}
     
     @classmethod
+    def get_returns_for_action(cls, action):
+        if np.all(action == np.array([0, 0, 0])):
+            return 5.0
+        elif np.all(action == np.array([0, 0, 1])):
+            return -3.0
+        elif np.all(action == np.array([0, 1, 0])):
+            return -2.0
+        elif np.all(action == np.array([0, 1, 1])):
+            return 1.0
+        elif np.all(action == np.array([1, 0, 0])):
+            return 2.0
+        elif np.all(action == np.array([1, 0, 1])):
+            return 2.0
+        elif np.all(action == np.array([1, 1, 0])):
+            return 1.0
+        elif np.all(action == np.array([1, 1, 1])):
+            return 1.0
+        
+    @classmethod
+    def get_wc_returns_for_pr_action(cls, action):
+        if np.all(action == np.array([0, 0, 0])):
+            return -3.0
+        elif np.all(action == np.array([0, 0, 1])):
+            return -3.0
+        elif np.all(action == np.array([0, 1, 0])):
+            return -2.0
+        elif np.all(action == np.array([0, 1, 1])):
+            return -2.0
+        elif np.all(action == np.array([1, 0, 0])):
+            return 2.0
+        elif np.all(action == np.array([1, 0, 1])):
+            return 2.0
+        elif np.all(action == np.array([1, 1, 0])):
+            return 1.0
+        elif np.all(action == np.array([1, 1, 1])):
+            return 1.0
+    
+    @classmethod
     def get_correct_pr_action(cls, target):
         if target == 5.0:
             return [([0, 0], 1.0)]
-        elif target == -15.0:
+        elif target == -3.0:
             return [([0, 1], 1.0)]
-        elif target == -6.0:
+        elif target == -2.0:
             return [([0, 1], 1.0)]
         elif target == 1.0:
             return [([1, 0], 1/3), ([1, 1], 2/3)]
@@ -48,9 +86,9 @@ class OneStepEnvVTwo(gym.Env):
     def get_best_pr_action(cls, target):
         if target == 5.0:
             return [([0, 0], 1.0)]
-        elif target == -15.0:
+        elif target == -3.0:
             return [([0, 1], 1.0)]
-        elif target == -6.0:
+        elif target == -2.0:
             return [([0, 1], 1.0)]
         elif target == 1.0:
             return [([1, 1], 1.0)]
@@ -63,14 +101,14 @@ class OneStepEnvVTwo(gym.Env):
     
     @classmethod
     def get_eval_targets(cls):
-        return [5.0, -15.0, 1.0, -6.0, 2.0]
+        return [5.0, -3.0, 1.0, -2.0, 2.0]
 
 
 def create_onestep_vtwo_toy_dataset(n_trajs=1000):
     traj_per_type = n_trajs // 8
     traj_one_one = [[[0], 0, False, [0, 0], [0]], [[1], 5.0, True, [0, 0], [0]]]
-    traj_one_two = [[[0], 0, False, [0, 0], [1]], [[2], -15.0, True, [0, 0], [1]]]
-    traj_two_one = [[[0], 0, False, [0, 1], [0]], [[3], -6.0, True, [0, 1], [0]]]
+    traj_one_two = [[[0], 0, False, [0, 0], [1]], [[2], -3.0, True, [0, 0], [1]]]
+    traj_two_one = [[[0], 0, False, [0, 1], [0]], [[3], -2.0, True, [0, 1], [0]]]
     traj_two_two = [[[0], 0, False, [0, 1], [1]], [[4], 1.0, True, [0, 1], [1]]]
     traj_three_one = [[[0], 0, False, [1, 0], [0]], [[5], 2.0, True, [1, 0], [0]]]
     traj_three_two = [[[0], 0, False, [1, 0], [1]], [[6], 2.0, True, [1, 0], [1]]]

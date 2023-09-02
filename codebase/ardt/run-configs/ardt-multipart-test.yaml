@@ -1,0 +1,30 @@
+environment_config:
+  env_type: "halfcheetah" 
+  max_ep_len: 1000
+  returns_scale: 1000
+
+dataset_config:
+  is_local: [true]
+  online_policy_names: ["robust"]
+  dataset_types: ["train"]
+  dataset_versions: ["v3"]
+
+model_config:
+  agent_type: "ardt-multipart"
+  context_size: [20]
+  lambda1: [1.0]
+  lambda2: [1.0]
+
+training_config:
+  train_steps: 2
+  warmup_steps: [1]
+  train_batch_size: [4]
+  learning_rate: [-4]
+  weight_decay: [-4]
+  max_grad_norm: [0.25] 
+  seeds: [33]
+
+admin_config:
+  wandb_project: "d4rl" 
+  hf_project: "d4rl"
+  run_type: "test"

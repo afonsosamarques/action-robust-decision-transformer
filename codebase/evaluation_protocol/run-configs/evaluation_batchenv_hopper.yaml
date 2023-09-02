@@ -1,0 +1,18 @@
+env_type: "hopper"
+run_type: "core"
+hf_project: 'afonsosamarques'
+
+eval_type: "batch_env_adv" 
+eval_steps: 1000 
+eval_target_return: 0 
+eval_iters: 256
+
+# always required
+trained_model_names: ['ardt-multipart-arrl_sgld_train_hopper_high-0609_2348-33', 'ardt-multipart-arrl_sgld_train_hopper_high-0709_0004-66', 'ardt-multipart-arrl_sgld_train_hopper_high-0709_0020-99', 'ardt-multipart-arrl_train_hopper_high-0609_2348-33', 'ardt-multipart-arrl_train_hopper_high-0709_0007-66', 'ardt-multipart-arrl_train_hopper_high-0709_0025-99', 'ardt-multipart-robust_train_hopper_level-0609_2348-33', 'ardt-multipart-robust_train_hopper_level-0709_0008-66', 'ardt-multipart-robust_train_hopper_level-0709_0028-99', 'ardt-multipart-robust_train_hopper_v3-0609_2348-33', 'ardt-multipart-robust_train_hopper_v3-0709_0011-66', 'ardt-multipart-robust_train_hopper_v3-0709_0034-99']
+trained_model_types: ['ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart']
+trained_model_paths: ['hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf']
+
+# not required
+adv_model_names: [] 
+adv_model_types: []  
+adv_model_paths: []

@@ -74,6 +74,8 @@ if __name__ == "__main__":
     if args.exploration_method is None:
         args.exploration_method = args.method
 
+    args.alpha = min(0.2, max(0.1, torch.distributions.Beta(3, 20).sample().item()))
+
     args.ratio = 10 if args.method == 'pr_mdp' else 1  # NOTE hacky way of setting defaults from the paper
     args.env_name = load_env_name(args.env_name)
 

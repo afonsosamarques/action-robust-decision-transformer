@@ -160,7 +160,7 @@ class DDPG:
             adv_mu = adv_mu.data.clamp(-1, 1)
             mu += adv_mu * self.alpha
 
-            return mu, pr_mu, adv_mu
+            return mu, pr_mu * (1 - self.alpha), adv_mu * self.alpha
             
         else:
  
@@ -395,9 +395,9 @@ class DDPGSGLDEvalWrapper(EvalWrapper):
     def get_action(self, state):
         state = torch.tensor(state, dtype=torch.float32)
         action, pr_action, adv_action = self.model.select_action(state, mdp_type=self.mdp_type)
-        return pr_action.detach().cpu().numpy(), self.model.alpha * adv_action.detach().cpu().numpy()  
+        return pr_action.detach().cpu().numpy(), adv_action.detach().cpu().numpy()  
     
     def get_batch_actions(self, states):
         states = torch.tensor(states, dtype=torch.float32)
         actions, pr_actions, adv_actions = self.model.select_action(states, mdp_type=self.mdp_type)
-        return pr_actions.detach().cpu().numpy(), self.model.alpha * adv_actions.detach().cpu().numpy()
+        return pr_actions.detach().cpu().numpy(), adv_actions.detach().cpu().numpy()

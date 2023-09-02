@@ -4,15 +4,14 @@ datasets-raw/
 datasets-to-push/
 datasets-store/
 datasets-all/
-datasets-exp2/
-datasets-exp2-helper/
-datasets-exp3/
-datasets-exp3-helper/
+datasets-pre-comb.zip
+datasets-with-issues/
 agents*/
 eval-outputs*/
 env-sims*/
 results*/
 final-results*/
+pre-results*/
 wandb*/
 run-configs-store/
 eval_store/
@@ -22,6 +21,7 @@ update_packages.sh
 cscluster-run-scripts-store/
 screenshots/
 all-info-clusters/
+eval-data*/
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files

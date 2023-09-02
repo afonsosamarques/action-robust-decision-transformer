@@ -1,0 +1,18 @@
+env_type: "halfcheetah"
+run_type: "core"
+hf_project: 'afonsosamarques'
+
+eval_type: "batch_env_adv" 
+eval_steps: 1000 
+eval_target_return: 0 
+eval_iters: 256
+
+# always required
+trained_model_names: ['ardt-multipart-arrl_sgld_train_halfcheetah_high-0609_2347-33', 'ardt-multipart-arrl_sgld_train_halfcheetah_high-0709_0049-66', 'ardt-multipart-arrl_sgld_train_halfcheetah_high-0709_0122-99', 'ardt-multipart-arrl_train_halfcheetah_high-0609_2347-33', 'ardt-multipart-arrl_train_halfcheetah_high-0709_0051-66', 'ardt-multipart-arrl_train_halfcheetah_high-0709_0122-99', 'ardt-multipart-robust_train_halfcheetah_level-0609_2348-33', 'ardt-multipart-robust_train_halfcheetah_level-0709_0053-66', 'ardt-multipart-robust_train_halfcheetah_level-0709_0122-99', 'ardt-multipart-robust_train_halfcheetah_v3-0609_2347-33', 'ardt-multipart-robust_train_halfcheetah_v3-0709_0049-66', 'ardt-multipart-robust_train_halfcheetah_v3-0709_0122-99']
+trained_model_types: ['ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart', 'ardt-multipart']
+trained_model_paths: ['hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf', 'hf']
+
+# not required
+adv_model_names: [] 
+adv_model_types: []  
+adv_model_paths: []

@@ -74,6 +74,7 @@ def evaluate(
 
             episode_returns = np.zeros(eval_iters)
             episode_lengths = np.zeros(eval_iters)
+            dones = np.zeros(eval_iters).astype(bool)
             eval_dict = defaultdict(list)
             data_dict = defaultdict(list)
             for i in range(eval_iters):
@@ -84,7 +85,12 @@ def evaluate(
                 data_dict['dones'].append([])
             
             with torch.no_grad():
-                model.new_batch_eval(start_states=start_states, eval_target=eval_target)
+                try:
+                    return_target = model.model.config.max_ep_return
+                except Exception:
+                    return_target = eval_target
+
+                model.new_batch_eval(start_states=start_states, eval_target=return_target)
 
                 # run episode
                 for t in range(env_steps):
@@ -93,30 +99,31 @@ def evaluate(
                     states = np.zeros_like(start_states)
                     rewards = np.zeros(eval_iters)
                     for i, env in enumerate(envs):
-                        # FIXME does not deal with possibility that they might end at different times!
-                        state, reward, done, trunc, _ = env.step(pr_actions[i])
+                        if dones[i] == False:
+                            state, reward, done, trunc, _ = env.step(pr_actions[i])
 
-                        states[i] = state
-                        rewards[i] = reward
-                        episode_returns[i] += reward
-                        episode_lengths[i] += 1
+                            states[i] = state
+                            rewards[i] = reward
+                            dones[i] = done or trunc
+                            episode_returns[i] += reward
+                            episode_lengths[i] += 1
 
-                        if record_data:
-                            # log episode data
-                            data_dict['observations'][i].append(state)
-                            data_dict['pr_actions'][i].append(pr_actions[i])
-                            data_dict['est_adv_actions'][i].append(est_adv_actions[i])
-                            data_dict['rewards'][i].append(reward)
-                            data_dict['dones'][i].append(done)
+                            if record_data:
+                                # log episode data
+                                data_dict['observations'][i].append(state)
+                                data_dict['pr_actions'][i].append(pr_actions[i])
+                                data_dict['est_adv_actions'][i].append(est_adv_actions[i])
+                                data_dict['rewards'][i].append(reward)
+                                data_dict['dones'][i].append(done)
 
-                        # finish and log episode
-                        if done or trunc or t == env_steps - 1:
-                            # log episode outcome
-                            eval_dict['iter'].append(i)
-                            eval_dict['env_seed'].append(i)
-                            eval_dict['init_target_return'].append(eval_target)
-                            eval_dict['ep_length'].append(episode_lengths[i])
-                            eval_dict['ep_return'].append(episode_returns[i])
+                            # finish and log episode
+                            if done or trunc or t == env_steps - 2:
+                                # log episode outcome
+                                eval_dict['iter'].append(i)
+                                eval_dict['env_seed'].append(i)
+                                eval_dict['init_target_return'].append(eval_target)
+                                eval_dict['ep_length'].append(episode_lengths[i])
+                                eval_dict['ep_return'].append(episode_returns[i])
 
                     model.update_batch_history(
                         pr_actions=pr_actions, 
@@ -125,13 +132,16 @@ def evaluate(
                         rewards=rewards,
                         timestep=t
                     )
+
+                    if t == env_steps - 2:
+                        break
             
             # show some simple statistics
             if verbose:
                 scrappy_print_eval_dict(model_name, eval_dict)
 
             # save eval_dict as json
-            dir_path = f'{find_root_dir()}/eval-outputs{run_suffix}/{model_name}/env-adv-{variation_type}'
+            dir_path = f'{find_root_dir()}/eval-outputs{run_suffix}/{env_type}/{model_name}/env-adv-{variation_type}'
             if not os.path.exists(dir_path):
                 os.makedirs(dir_path)
             with open(f"{dir_path}/{MULTIPLIERS[k]}.json", 'w') as f:
