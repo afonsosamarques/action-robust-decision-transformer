@@ -15,7 +15,7 @@ Run code as modules and not as functions. For example, to run a test run of the 
 python3 -m ardt.pipeline --config_name pipeline-example
 ```
 
-Concretely, if you want to launch a training run set your configurations in a yaml file following the provided examples, and place it the file under `ardt/run-configs`. Make sure the required dataset is placed under `ardt/datasets`.
+Concretely, if you want to launch a training run set your configurations in a yaml file following the provided examples, and place it the file under `ardt/run-configs`. Make sure the required dataset is placed under `ardt/datasets`. You can either shut down logging or you will have to set up a HuggingFace and Wandb project to store the models and log training.
 
 To launch an evaluation run, you will also require a yaml configuration file. Place it under `evaluation_protocol/run-configs` and run, for example:
 ```bash
