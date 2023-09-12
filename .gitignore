@@ -1,4 +1,6 @@
 #  Add-hoc gitignore for python project
+cluster-scripts
+clusters-nbs/
 datasets/
 datasets-raw/
 datasets-to-push/
