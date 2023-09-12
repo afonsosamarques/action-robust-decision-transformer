@@ -61,7 +61,7 @@ class DecisionTransformerGymDataCollator:
         self.min_ep_return = min(ep_returns)
         self.min_ep_adv_return = min(ep_adv_returns) if len(ep_adv_returns) > 0 else self.min_ep_return
         self.is_mixed = self.max_ep_return != self.max_ep_adv_return
-        self.discrete_returns = np.unique(np.array(ep_returns))
+        self.discrete_returns = np.unique(ep_returns)
         # retrieve lower bounds for actions
         self.pr_act_lb = min(0.0, (int(np.min([np.min(traj["pr_actions"]) for traj in dataset])) - 1) * 5.0)
         self.adv_act_lb = min(0.0, (int(np.min([np.min(traj["adv_actions"]) for traj in dataset])) - 1) * 5.0)

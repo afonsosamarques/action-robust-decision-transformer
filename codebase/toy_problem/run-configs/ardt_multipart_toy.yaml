@@ -22,7 +22,7 @@ training_config:
   learning_rate: [-5]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   weight_decay: [-4]  # these are for different parameter combinations to try!! e.g. -4 => 10**-4 | original: -4
   max_grad_norm: [0.25]  # these are for different parameter combinations to try!! | original: 0.25
-  warmup_steps: [0]  # these are for different parameter combinations to try!! again 4 => 10**4 | original: 10**5
+  warmup_steps: [3]  # these are for different parameter combinations to try!! again 4 => 10**4 | original: 10**5
 
 evaluation_config:
   is_eval: true 
