@@ -17,7 +17,7 @@ class ReturnsDT(DecisionTransformerModel):
 
         self.embed_timestep = torch.nn.Embedding(config.max_ep_len, config.hidden_size)
         self.embed_state = torch.nn.Linear(config.state_dim, config.hidden_size)
-        self.embed_pr_action = torch.nn.Linear(config.pr_act_dim, config.hidden_size)
+        self.embed_adv_action = torch.nn.Linear(config.adv_act_dim, config.hidden_size)
         self.embed_return = torch.nn.Linear(1, config.hidden_size)
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
@@ -66,19 +66,19 @@ class ReturnsDT(DecisionTransformerModel):
 
         # embed each modality with a different head
         state_embeddings = self.embed_state(states)
-        pr_action_embeddings = self.embed_pr_action(pr_actions)
+        adv_action_embeddings = self.embed_adv_action(adv_actions)
         returns_embeddings = self.embed_return(returns_to_go)
         time_embeddings = self.embed_timestep(timesteps)
 
         # time embeddings are treated similar to positional embeddings
         state_embeddings += time_embeddings
-        pr_action_embeddings += time_embeddings
+        adv_action_embeddings += time_embeddings
         returns_embeddings += time_embeddings
 
         # this makes the sequence look like (R_1, s_1, a_1, a'_1, R_2, s_2, a_2, a'_2, ...)
         # which works nice in an autoregressive sense since states predict actions
         stacked_inputs = (
-            torch.stack((state_embeddings, pr_action_embeddings, returns_embeddings), dim=1)
+            torch.stack((state_embeddings, adv_action_embeddings, returns_embeddings), dim=1)
             .permute(0, 2, 1, 3)
             .reshape(batch_size, 3 * seq_length, self.hidden_size)
         )
@@ -107,13 +107,20 @@ class ReturnsDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 3, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        rtg_probs = torch.nn.functional.softmax(self.predict_rtg(x[:, 1]), dim=-1)
-        rtg_preds = self.predict_values(rtg_probs, self.config.discrete_returns).reshape(returns_to_go.shape[0], returns_to_go.shape[1], -1)
+        adv_rtg_probs = torch.nn.functional.softmax(self.predict_rtg(x[:, 1]), dim=-1)
+        adv_rtg_preds = self.predict_values(adv_rtg_probs, self.config.discrete_returns).reshape(returns_to_go.shape[0], returns_to_go.shape[1], -1)
 
+        with torch.no_grad():
+            pred_mask = (returns_to_go != torch.min(adv_rtg_preds))
+            mask_value = self.config.min_obs_return - self.config.max_obs_return - 1  # any return will be further from this mask value than the best return 
+            rtg_preds = (pred_mask * mask_value) + (returns_to_go * ~pred_mask) 
+        
         if is_train:
+            self.step += 1
             one_hot_rtg = self.one_hot_encode(returns_to_go, self.config.discrete_returns).reshape(returns_to_go.shape[0], returns_to_go.shape[1], -1)
-            er_mask = (returns_to_go > rtg_preds)
-            ce = torch.nn.functional.cross_entropy(rtg_probs, one_hot_rtg, reduction='none')
+
+            er_mask = (returns_to_go > adv_rtg_preds)
+            ce = torch.nn.functional.cross_entropy(adv_rtg_preds, one_hot_rtg, reduction='none')
             rdt_loss = (0.01 * ce * er_mask) + (0.99 * ce * ~er_mask)
             rdt_loss = torch.mean(rdt_loss)
 
@@ -302,7 +309,7 @@ class MultipartARDT(DecisionTransformerModel):
             )
             loss += rdt_out['rdt_loss']
 
-            if self.step >= self.config.warmup_steps:
+            if self.step >= self.config.warmup_steps * 2:
                 pdt_out = self.pdt.forward(
                     is_train=is_train,
                     states=states,
