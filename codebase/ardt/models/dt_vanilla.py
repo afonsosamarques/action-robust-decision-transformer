@@ -11,19 +11,16 @@ class VanillaDT(DecisionTransformerModel):
         super().__init__(config)
         self.logger = logger
         self.step = 0
+        self.keys_to_keep = set(["states", "actions", "pr_actions", "rewards", "returns_to_go", "timesteps", "attention_mask"])
 
     def forward(self, is_train=True,  **kwargs):
-        new_kwargs = kwargs.copy()
+        new_kwargs = {k: kwargs[k] for k in self.keys_to_keep if k in kwargs}
         if "pr_actions" in new_kwargs:
-            # change to be able to utilise the default code
             new_kwargs["actions"] = new_kwargs.pop("pr_actions")
-            new_kwargs.pop("adv_actions")
-            new_kwargs.pop("next_returns_to_go")
         
         if is_train:
-            # add the DT loss; applied only to non-padding values in action head
             self.step += 1
-
+            
             attention_mask = new_kwargs["attention_mask"]
             output = super().forward(**new_kwargs)
             
@@ -43,13 +40,12 @@ class VanillaDT(DecisionTransformerModel):
 
             return {"loss": loss}
         else:
-            # simply return predictions
             return super().forward(**new_kwargs)
     
     def eval(self, **kwargs):
         return DTEvalWrapper(self)
     
-    def get_actions(self, states, actions, rewards, returns_to_go, timesteps, device, batch_size=1):
+    def get_actions(self, states, actions, rewards, returns_to_go, timesteps, device, *args, batch_size=1, **kwargs):
         # NOTE this implementation does not condition on past rewards
         # reshape to model input format
         states = states.reshape(batch_size, -1, self.config.state_dim)

@@ -94,15 +94,6 @@ class DecisionTransformerGymDataCollator:
         for idx in batch_idx:
             traj = self.dataset[int(idx)]
 
-            # # see if dataset is mixed and trajectory is adversarial, if so get shift
-            # shifts = np.zeros_like(traj['returns_to_go'])
-            # if self.is_mixed and not np.allclose(traj['adv_actions'], np.zeros_like(traj['adv_actions'])):
-            #     returns_to_go = np.array(traj['returns_to_go'])
-            #     ret_percents = (returns_to_go - self.min_ep_adv_return) / (self.max_ep_adv_return - self.min_ep_adv_return)
-            #     assert np.all(ret_percents <= 1.0) and np.all(ret_percents >= 0.0), "Return percentage needs to be between 0 and 1."
-            #     scaled_rtgs = ret_percents * (self.max_ep_return - self.min_ep_return) + self.min_ep_return
-            #     shifts = scaled_rtgs - returns_to_go
-
             # get sequences from the dataset
             if self.is_multipart:
                 start = 0

@@ -11,7 +11,6 @@ class ReturnsDT(DecisionTransformerModel):
         super().__init__(config)
         self.config = config
         self.hidden_size = config.hidden_size
-        self.step = 0
 
         self.encoder = DecisionTransformerGPT2Model(config)
 
@@ -65,10 +64,10 @@ class ReturnsDT(DecisionTransformerModel):
             attention_mask = torch.ones((batch_size, seq_length), dtype=torch.long)
 
         # embed each modality with a different head
+        time_embeddings = self.embed_timestep(timesteps)
         state_embeddings = self.embed_state(states)
         pr_action_embeddings = self.embed_pr_action(pr_actions)
         returns_embeddings = self.embed_return(returns_to_go)
-        time_embeddings = self.embed_timestep(timesteps)
 
         # time embeddings are treated similar to positional embeddings
         state_embeddings += time_embeddings
@@ -107,22 +106,16 @@ class ReturnsDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 3, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        rtg_probs = torch.nn.functional.softmax(self.predict_rtg(x[:, 1]), dim=-1)
-        rtg_preds = self.predict_values(rtg_probs, self.config.discrete_returns).reshape(returns_to_go.shape[0], returns_to_go.shape[1], -1)
+        rtg_logits = self.predict_rtg(x[:, 1])
+        rtg_preds = self.predict_values(torch.nn.functional.softmax(rtg_logits, dim=-1), self.config.discrete_returns).reshape(returns_to_go.shape[0], returns_to_go.shape[1], -1)
 
         if is_train:
-            one_hot_rtg = self.one_hot_encode(returns_to_go, self.config.discrete_returns).reshape(returns_to_go.shape[0], returns_to_go.shape[1], -1)
-            er_mask = (returns_to_go > rtg_preds)
-            ce = torch.nn.functional.cross_entropy(rtg_probs, one_hot_rtg, reduction='none')
+            one_hot_rtg = self.one_hot_encode(returns_to_go.view(-1), self.config.discrete_returns).reshape(returns_to_go.shape[0], returns_to_go.shape[1], -1)
+            target_indices = torch.argmax(one_hot_rtg, dim=-1)
+            ce = torch.nn.functional.cross_entropy(rtg_logits.view(-1, len(self.config.discrete_returns)), target_indices.view(-1), reduction='none')
+            er_mask = (returns_to_go > rtg_preds).view(-1)
             rdt_loss = (0.01 * ce * er_mask) + (0.99 * ce * ~er_mask)
             rdt_loss = torch.mean(rdt_loss)
-
-            return {"rdt_loss": rdt_loss, 
-                    "rdt_preds": rtg_preds,
-                    "mean_rdt_preds": torch.mean(rtg_preds).item(),
-                    "median_rdt_preds": torch.median(rtg_preds).item(),
-                    "max_rdt_preds": torch.max(rtg_preds).item(), 
-                    "min_rdt_preds": torch.min(rtg_preds).item()}
         else:
             # return predictions
             if not return_dict:
@@ -141,7 +134,6 @@ class ProtagonistDT(DecisionTransformerModel):
         super().__init__(config)
         self.config = config
         self.logger = logger
-        self.step = 0
 
         self.hidden_size = config.hidden_size
 
@@ -186,15 +178,15 @@ class ProtagonistDT(DecisionTransformerModel):
             attention_mask = torch.ones((batch_size, seq_length), dtype=torch.long)
 
         # embed each modality with a different head
+        time_embeddings = self.embed_timestep(timesteps)
+        returns_embeddings = self.embed_return(returns_to_go)
         state_embeddings = self.embed_state(states)
         pr_action_embeddings = self.embed_pr_action(pr_actions)
-        returns_embeddings = self.embed_return(returns_to_go)
-        time_embeddings = self.embed_timestep(timesteps)
 
         # time embeddings are treated similar to positional embeddings
+        returns_embeddings += time_embeddings
         state_embeddings += time_embeddings
         pr_action_embeddings += time_embeddings
-        returns_embeddings += time_embeddings
 
         # this makes the sequence look like (R_1, s_1, a_1, a'_1, R_2, s_2, a_2, a'_2, ...)
         # which works nice in an autoregressive sense since states predict actions
@@ -231,9 +223,6 @@ class ProtagonistDT(DecisionTransformerModel):
         pr_action_preds = self.predict_pr_action(x[:, 1])  # predict next pr action given return and state
 
         if is_train:
-            # return loss
-            self.step += 1
-
             # compute loss
             pr_action_preds = pr_action_preds.reshape(-1, self.config.pr_act_dim)
             pr_action_targets = pr_actions.reshape(-1, self.config.pr_act_dim)
@@ -293,7 +282,7 @@ class MultipartARDT(DecisionTransformerModel):
                 pr_actions=pr_actions,
                 adv_actions=adv_actions,
                 rewards=rewards,
-                returns_to_go=next_returns_to_go,
+                returns_to_go=returns_to_go,
                 timesteps=timesteps,
                 attention_mask=attention_mask,
                 output_hidden_states=output_hidden_states,

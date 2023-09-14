@@ -90,39 +90,27 @@ class DecisionTransformerGymDataCollator:
 
             # get sequences from the dataset
             if self.is_multipart:
-                start = random.randint(0, len(traj["rewards"]) - 2)
-                end = min(start + self.context_size - 1, len(traj["rewards"]) - 1)
-
-                s.append(np.array(traj["observations"][start : end]).reshape(1, -1, self.state_dim))
-                pr_actions = np.array(traj["pr_actions"][start : end]).reshape(1, -1, self.pr_act_dim)
-                a_pr.append(pr_actions)
-                adv_actions = np.array(traj["adv_actions"][start : end]).reshape(1, -1, self.adv_act_dim)
-                a_adv.append(adv_actions)
-                r.append(np.array(traj["rewards"][start : end]).reshape(1, -1, 1))
-                rtg.append(np.array(traj["returns_to_go"][start : end]).reshape(1, -1, 1))
-                next_rtg.append(np.array(traj["returns_to_go"][start + 1 : end + 1]).reshape(1, -1, 1))
-                d.append(np.array(traj["dones"][start : end]).reshape(1, -1))
-                tsteps.append(np.arange(start, start + s[-1].shape[1]).reshape(1, -1))
-                tsteps[-1][tsteps[-1] >= self.max_ep_len] = self.max_ep_len - 1  # padding cutoff
+                window_size = self.context_size + 1
+                start = random.randint(1, len(traj["rewards"]) - 1)
             else:
+                window_size = self.context_size
                 start = random.randint(0, len(traj["rewards"]) - 1)
 
-                s.append(np.array(traj["observations"][start : start + self.context_size]).reshape(1, -1, self.state_dim))
-                pr_actions = np.array(traj["pr_actions"][start : start + self.context_size]).reshape(1, -1, self.pr_act_dim)
-                a_pr.append(pr_actions)
-                adv_actions = np.array(traj["adv_actions"][start : start + self.context_size]).reshape(1, -1, self.adv_act_dim)
-                a_adv.append(adv_actions)       
-                r.append(np.array(traj["rewards"][start : start + self.context_size]).reshape(1, -1, 1))
-                rtg.append(np.array(traj["returns_to_go"][start : start + self.context_size]).reshape(1, -1, 1))
-                next_rtg.append(np.array(traj["returns_to_go"][start : start + self.context_size]).reshape(1, -1, 1))  # ignored
-                d.append(np.array(traj["dones"][start : start + self.context_size]).reshape(1, -1))
-                tsteps.append(np.arange(start, start + s[-1].shape[1]).reshape(1, -1))
-                tsteps[-1][tsteps[-1] >= self.max_ep_len] = self.max_ep_len - 1  # padding cutoff
+            s.append(np.array(traj["observations"][start : start + self.context_size]).reshape(1, -1, self.state_dim))
+            pr_actions = np.array(traj["pr_actions"][start : start + self.context_size]).reshape(1, -1, self.pr_act_dim)
+            a_pr.append(pr_actions)
+            adv_actions = np.array(traj["adv_actions"][start : start + self.context_size]).reshape(1, -1, self.adv_act_dim)
+            a_adv.append(adv_actions)       
+            r.append(np.array(traj["rewards"][start : start + self.context_size]).reshape(1, -1, 1))
+            rtg.append(np.array(traj["returns_to_go"][start : start + self.context_size]).reshape(1, -1, 1))
+            d.append(np.array(traj["dones"][start : start + self.context_size]).reshape(1, -1))
+            tsteps.append(np.arange(start, start + s[-1].shape[1]).reshape(1, -1))
+            tsteps[-1][tsteps[-1] >= self.max_ep_len] = self.max_ep_len - 1  # padding cutoff
 
             # normalising and padding; we pad with zeros to the left of the sequence
             # except for actions, where we need to pad with some negative number well outside of domain
             tlen = s[-1].shape[1]
-            padlen = self.context_size - 1 - tlen if self.is_multipart else self.context_size - tlen
+            padlen = window_size - tlen
             
             s[-1] = (s[-1] - self.state_mean) / self.state_std
             s[-1] = np.concatenate(
@@ -147,17 +135,11 @@ class DecisionTransformerGymDataCollator:
                 [np.zeros((1, padlen, 1)) * 1.0, rtg[-1]], axis=1,
             )
 
-            next_rtg[-1] /= self.returns_scale
-            next_rtg[-1] = np.concatenate(
-                [np.zeros((1, padlen, 1)) * 1.0, next_rtg[-1]], axis=1,
-            )
-
             d[-1] = np.concatenate(
                 [np.ones((1, padlen)) * 2.0, d[-1]], axis=1,
             )
 
             tsteps[-1] = np.concatenate([np.zeros((1, padlen)), tsteps[-1]], axis=1)
-
             mask.append(np.concatenate([np.zeros((1, padlen)), np.ones((1, tlen))], axis=1))  # disregard padded values
 
         # stack everything into tensors and return
@@ -166,7 +148,6 @@ class DecisionTransformerGymDataCollator:
         a_adv = torch.from_numpy(np.concatenate(a_adv, axis=0)).float()
         r = torch.from_numpy(np.concatenate(r, axis=0)).float()
         rtg = torch.from_numpy(np.concatenate(rtg, axis=0)).float()
-        next_rtg = torch.from_numpy(np.concatenate(next_rtg, axis=0)).float()
         d = torch.from_numpy(np.concatenate(d, axis=0))
         tsteps = torch.from_numpy(np.concatenate(tsteps, axis=0)).long()
         mask = torch.from_numpy(np.concatenate(mask, axis=0)).float()
@@ -177,7 +158,6 @@ class DecisionTransformerGymDataCollator:
             "adv_actions": a_adv,
             "rewards": r,
             "returns_to_go": rtg,
-            "next_returns_to_go": next_rtg,
             "timesteps": tsteps,
             "attention_mask": mask,
         }

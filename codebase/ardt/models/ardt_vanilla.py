@@ -20,15 +20,15 @@ class VanillaARDT(DecisionTransformerModel):
         self.embed_timestep = torch.nn.Embedding(config.max_ep_len, config.hidden_size)
         self.embed_return = torch.nn.Linear(1, config.hidden_size)
         self.embed_state = torch.nn.Linear(config.state_dim, config.hidden_size)
-        self.embed_pr_action = torch.nn.Linear(config.pr_act_dim, config.hidden_size)
         self.embed_adv_action = torch.nn.Linear(config.adv_act_dim, config.hidden_size)
+        self.embed_pr_action = torch.nn.Linear(config.pr_act_dim, config.hidden_size)
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
-        self.predict_pr_action = torch.nn.Sequential(
-            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()]))
-        )
         self.predict_adv_action = torch.nn.Sequential(
             *([torch.nn.Linear(config.hidden_size, config.adv_act_dim)] + ([torch.nn.Tanh()]))
+        )
+        self.predict_pr_action = torch.nn.Sequential(
+            *([torch.nn.Linear(config.hidden_size, config.pr_act_dim)] + ([torch.nn.Tanh()]))
         )
 
         self.post_init()
@@ -61,22 +61,22 @@ class VanillaARDT(DecisionTransformerModel):
             attention_mask = torch.ones((batch_size, seq_length), dtype=torch.long)
 
         # embed each modality with a different head
-        state_embeddings = self.embed_state(states)
-        pr_action_embeddings = self.embed_pr_action(pr_actions)
-        adv_action_embeddings = self.embed_adv_action(adv_actions)
-        returns_embeddings = self.embed_return(returns_to_go)
         time_embeddings = self.embed_timestep(timesteps)
+        returns_embeddings = self.embed_return(returns_to_go)
+        state_embeddings = self.embed_state(states)
+        adv_action_embeddings = self.embed_adv_action(adv_actions)
+        pr_action_embeddings = self.embed_pr_action(pr_actions)
 
         # time embeddings are treated similar to positional embeddings
-        state_embeddings += time_embeddings
-        pr_action_embeddings += time_embeddings
-        adv_action_embeddings += time_embeddings
         returns_embeddings += time_embeddings
+        state_embeddings += time_embeddings
+        adv_action_embeddings += time_embeddings
+        pr_action_embeddings += time_embeddings
 
         # this makes the sequence look like (R_1, s_1, a_1, a'_1, R_2, s_2, a_2, a'_2, ...)
         # which works nice in an autoregressive sense since states predict actions
         stacked_inputs = (
-            torch.stack((returns_embeddings, state_embeddings, pr_action_embeddings, adv_action_embeddings), dim=1)
+            torch.stack((returns_embeddings, state_embeddings, adv_action_embeddings, pr_action_embeddings), dim=1)
             .permute(0, 2, 1, 3)
             .reshape(batch_size, 4 * seq_length, self.hidden_size)
         )
@@ -105,8 +105,8 @@ class VanillaARDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        pr_action_preds = self.predict_pr_action(x[:, 1])  # predict next pr action given return and state
-        adv_action_preds = self.predict_adv_action(x[:, 2])  # predict next adv action given return, state and pr_action
+        adv_action_preds = self.predict_adv_action(x[:, 1])
+        pr_action_preds = self.predict_pr_action(x[:, 2])
 
         if is_train:
             # return loss
@@ -148,7 +148,7 @@ class VanillaARDT(DecisionTransformerModel):
     def eval(self, **kwargs):
         return ADTEvalWrapper(self)
     
-    def get_actions(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device, batch_size=1):
+    def get_actions(self, states, pr_actions, adv_actions, rewards, returns_to_go, timesteps, device, *args, batch_size=1, **kwargs):
         # NOTE this implementation does not condition on past rewards
         # reshape to model input format
         states = states.reshape(batch_size, -1, self.config.state_dim)

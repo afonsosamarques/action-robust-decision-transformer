@@ -11,7 +11,6 @@ class ReturnsDT(DecisionTransformerModel):
         super().__init__(config)
         self.config = config
         self.hidden_size = config.hidden_size
-        self.step = 0
 
         self.encoder = DecisionTransformerGPT2Model(config)
 
@@ -21,7 +20,7 @@ class ReturnsDT(DecisionTransformerModel):
         self.embed_return = torch.nn.Linear(1, config.hidden_size)
         self.embed_ln = torch.nn.LayerNorm(config.hidden_size)
 
-        self.predict_rtg = torch.nn.Linear(config.hidden_size, 1)
+        self.predict_next_rtg = torch.nn.Linear(config.hidden_size, 1)
 
         self.post_init()
 
@@ -31,13 +30,13 @@ class ReturnsDT(DecisionTransformerModel):
         states=None,
         pr_actions=None,
         adv_actions=None,
-        rewards=None,
-        returns_to_go=None,
+        next_returns_to_go=None,
         timesteps=None,
         attention_mask=None,
         output_hidden_states=None,
         output_attentions=None,
-        return_dict=None,):
+        return_dict=None,
+        **kwargs,):
         #
         # setting configurations for what goes into the output
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
@@ -53,10 +52,10 @@ class ReturnsDT(DecisionTransformerModel):
             attention_mask = torch.ones((batch_size, seq_length), dtype=torch.long)
 
         # embed each modality with a different head
+        time_embeddings = self.embed_timestep(timesteps)
         state_embeddings = self.embed_state(states)
         pr_action_embeddings = self.embed_pr_action(pr_actions)
-        returns_embeddings = self.embed_return(returns_to_go)
-        time_embeddings = self.embed_timestep(timesteps)
+        returns_embeddings = self.embed_return(next_returns_to_go)
 
         # time embeddings are treated similar to positional embeddings
         state_embeddings += time_embeddings
@@ -95,27 +94,27 @@ class ReturnsDT(DecisionTransformerModel):
         x = x.reshape(batch_size, seq_length, 3, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        rtg_preds = self.predict_rtg(x[:, 1])
+        next_rtg_preds = self.predict_next_rtg(x[:, 1])
 
         if is_train:
-            er_mask = (returns_to_go > rtg_preds)
-            rdt_loss = (0.99 * ((returns_to_go - rtg_preds) ** 2) * er_mask) + (0.01 * ((rtg_preds - returns_to_go) ** 2) * ~er_mask)
+            er_mask = (next_returns_to_go > next_rtg_preds)
+            rdt_loss = (0.99 * ((next_returns_to_go - next_rtg_preds) ** 2) * er_mask) + (0.01 * ((next_rtg_preds - next_returns_to_go) ** 2) * ~er_mask)
             rdt_loss = rdt_loss.reshape(-1, 1)[attention_mask.reshape(-1) > 0]
             rdt_loss = torch.mean(rdt_loss)
 
             return {"rdt_loss": rdt_loss, 
-                    "rdt_preds": rtg_preds,
-                    "mean_rdt_preds": torch.mean(rtg_preds).item(),
-                    "median_rdt_preds": torch.median(rtg_preds).item(),
-                    "max_rdt_preds": torch.max(rtg_preds).item(), 
-                    "min_rdt_preds": torch.min(rtg_preds).item()}
+                    "rdt_preds": next_rtg_preds,
+                    "mean_rdt_preds": torch.mean(next_rtg_preds).item(),
+                    "median_rdt_preds": torch.median(next_rtg_preds).item(),
+                    "max_rdt_preds": torch.max(next_rtg_preds).item(), 
+                    "min_rdt_preds": torch.min(next_rtg_preds).item()}
         else:
             # return predictions
             if not return_dict:
-                return (rtg_preds)
+                return (next_rtg_preds)
 
             return DecisionTransformerOutput(
-                rtg_preds=rtg_preds,
+                rtg_preds=next_rtg_preds,
                 # hidden_states=encoder_outputs.hidden_states,
                 # last_hidden_state=encoder_outputs.last_hidden_state,
                 # attentions=encoder_outputs.attentions,
@@ -150,13 +149,13 @@ class ProtagonistDT(DecisionTransformerModel):
         states=None,
         pr_actions=None,
         adv_actions=None,
-        rewards=None,
         returns_to_go=None,
         timesteps=None,
         attention_mask=None,
         output_hidden_states=None,
         output_attentions=None,
-        return_dict=None,):
+        return_dict=None,
+        **kwargs,):
         #
         # setting configurations for what goes into the output
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
@@ -251,46 +250,41 @@ class MultipartARDT(DecisionTransformerModel):
         states=None,
         pr_actions=None,
         adv_actions=None,
-        rewards=None,
         returns_to_go=None,
-        next_returns_to_go=None,
         timesteps=None,
         attention_mask=None,
         output_hidden_states=None,
         output_attentions=None,
-        return_dict=None,):
+        return_dict=None,
+        **kwargs,):
         #
         # easier if we simply separate between training and testing straight away
         if is_train:
             self.step += 1
-            loss = 0
-            rdt_out = None
             pdt_out = None
 
             rdt_out = self.rdt.forward(
                 is_train=is_train,
-                states=states,
-                pr_actions=pr_actions,
-                adv_actions=adv_actions,
-                rewards=rewards,
-                returns_to_go=next_returns_to_go,
-                timesteps=timesteps,
-                attention_mask=attention_mask,
+                states=states[:, :-1],
+                pr_actions=pr_actions[:, :-1],
+                adv_actions=adv_actions[:, :-1],
+                next_returns_to_go=returns_to_go[:, 1:],
+                timesteps=timesteps[:, :-1],
+                attention_mask=attention_mask[:, :-1],
                 output_hidden_states=output_hidden_states,
                 output_attentions=output_attentions,
                 return_dict=return_dict,
             )
-            loss += rdt_out['rdt_loss']
+            loss = rdt_out['rdt_loss']
 
             if self.step >= self.config.warmup_steps:
                 pdt_out = self.pdt.forward(
                     is_train=is_train,
-                    states=states,
-                    pr_actions=pr_actions,
-                    rewards=rewards,
+                    states=states[:, 1:],
+                    pr_actions=pr_actions[:, 1:],
                     returns_to_go=rdt_out['rdt_preds'],
-                    timesteps=timesteps,
-                    attention_mask=attention_mask,
+                    timesteps=timesteps[:, 1:],
+                    attention_mask=attention_mask[:, 1:],
                     output_hidden_states=output_hidden_states,
                     output_attentions=output_attentions,
                     return_dict=return_dict,
@@ -318,8 +312,6 @@ class MultipartARDT(DecisionTransformerModel):
                 is_train=is_train,
                 states=states,
                 pr_actions=pr_actions,
-                adv_actions=adv_actions,
-                rewards=rewards,
                 returns_to_go=returns_to_go,
                 timesteps=timesteps,
                 attention_mask=attention_mask,
