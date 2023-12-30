@@ -7,6 +7,7 @@ import numpy as np
 import pickle
 import torch
 import subprocess
+import random
 from tqdm import trange
 from collections import defaultdict
 
@@ -34,6 +35,17 @@ def find_root_dir():
     except Exception as e:
         root_dir = os.getcwd()[:os.getcwd().find('action-robust-decision-transformer')+len('action-robust-decision-transformer')]
     return root_dir + ('' if root_dir.endswith('action-robust-decision-transformer') else '/action-robust-decision-transformer') + "/codebase/baselines/arrl"
+
+
+def set_seed_everywhere(seed, env=None):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.mps.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    if env is not None:
+        env.seed = seed
+        env.action_space.seed = seed
 
 
 if __name__ == "__main__":
@@ -69,18 +81,22 @@ if __name__ == "__main__":
                         help='control given to adversary (default: 0.1)')
     parser.add_argument('--exploration_method', default=None, choices=['mdp', 'nr_mdp', 'pr_mdp'])
     parser.add_argument('--visualize', default=False, action='store_true')
+    parser.add_argument('--seed', required=True, type=int)
     args = parser.parse_args()
 
     if args.exploration_method is None:
         args.exploration_method = args.method
 
-    args.alpha = min(0.2, max(0.1, torch.distributions.Beta(3, 20).sample().item()))
-
     args.ratio = 10 if args.method == 'pr_mdp' else 1  # NOTE hacky way of setting defaults from the paper
     args.env_name = load_env_name(args.env_name)
 
-    env = NormalizedActions(gym.make(args.env_name))
-    eval_env = NormalizedActions(gym.make(args.env_name))
+    env = gym.make(args.env_name)
+    set_seed_everywhere(args.seed, env)
+    env = NormalizedActions(env)
+
+    eval_env = gym.make(args.env_name)
+    set_seed_everywhere(args.seed + 1000, eval_env)
+    eval_env = NormalizedActions(eval_env)
 
     agent = DDPG(gamma=args.gamma, tau=args.tau, hidden_size=args.hidden_size, num_inputs=env.observation_space.shape[0],
                 action_space=env.action_space.shape[0], train_mode=True, alpha=args.alpha, replay_size=args.replay_size)

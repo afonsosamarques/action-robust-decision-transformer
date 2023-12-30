@@ -8,6 +8,7 @@ import torch
 import subprocess
 import datetime 
 import json
+import random
 
 from tqdm import trange
 from collections import defaultdict
@@ -35,6 +36,17 @@ def find_root_dir():
     except Exception as e:
         root_dir = os.getcwd()[:os.getcwd().find('action-robust-decision-transformer')+len('action-robust-decision-transformer')]
     return root_dir + ('' if root_dir.endswith('action-robust-decision-transformer') else '/action-robust-decision-transformer') + "/codebase/baselines/arrl_sgld"
+
+
+def set_seed_everywhere(seed, env=None):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.mps.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    if env is not None:
+        env.seed = seed
+        env.action_space.seed = seed
 
 
 if __name__ == "__main__":
@@ -74,6 +86,7 @@ if __name__ == "__main__":
     parser.add_argument('--one_player', default=False, action='store_true')
     parser.add_argument('--Kt', type=int, default=15)
     parser.add_argument('--device', type=str, default='cpu')
+    parser.add_argument('--seed', required=True, type=int)
 
     args = parser.parse_args()
     args.env_name = load_env_name(args.env_name)
@@ -85,10 +98,13 @@ if __name__ == "__main__":
     if args.exploration_method is None:
         args.exploration_method = args.method
 
-    env = NormalizedActions(gym.make(args.env_name))
-    eval_env = NormalizedActions(gym.make(args.env_name))
+    env = gym.make(args.env_name)
+    set_seed_everywhere(args.seed, env)
+    env = NormalizedActions(env)
 
-    args.alpha = min(0.2, max(0.1, torch.distributions.Beta(3, 20).sample().item()))
+    eval_env = gym.make(args.env_name)
+    set_seed_everywhere(args.seed + 1000, eval_env)
+    eval_env = NormalizedActions(eval_env)
     
     agent = DDPG(beta=args.beta, epsilon=args.epsilon, learning_rate=args.learning_rate, gamma=args.gamma, tau=args.tau, 
                     hidden_size_dim0=args.hidden_size_dim0, hidden_size_dim1=args.hidden_size_dim1, 
